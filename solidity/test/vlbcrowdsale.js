@@ -10,7 +10,7 @@ contract('VLBCrowdsale', function (accounts) {
     const presaleTokenWallet = "0x995d3876d03CeC2Ae2Dc79dC29E066C9C0A1fBF8";
     const crowdsaleTokenWallet = "0x4A4A67ddbFbC5A6bbFFe07613fa0599b76f1CC21";
     const presaleBuyerAddress = "0x6AB20252Cc8fe103949ef6500C8e27f5c194375C";
-    //const crowdsaleBuyerAddress = "0x9dD1c94058c51E1A24c4598B1071fDcaf908205F";
+    const crowdsaleBuyerAddress = "0x9dD1c94058c51E1A24c4598B1071fDcaf908205F";
     const owner = "0x156419fc32aB83B78421d3881397c2167A5FA552";
     const gasAmount = 4000000;
 
@@ -22,12 +22,9 @@ contract('VLBCrowdsale', function (accounts) {
         const token = await VLBToken.new({from: owner, gas: gasAmount});
         const vault = await VLBRefundVault.new({from: owner, gas: gasAmount});
 
-        var currentTime = currentTime = Math.floor(Date.now() / 1000);
         const tokensale = await VLBCrowdsale.new(
             token.address,
-            vault.address,
-            currentTime + 100,
-            currentTime + 1000,
+            vault.address, 0, 0,
             {from: owner, gas: gasAmount});
 
         token.setCrowdsaleAddress(tokensale.address, {from: owner, gas: gasAmount});
@@ -52,12 +49,9 @@ contract('VLBCrowdsale', function (accounts) {
         const token = await VLBToken.new({from: owner, gas: gasAmount});
         const vault = await VLBRefundVault.new({from: owner, gas: gasAmount});
 
-        var currentTime = currentTime = Math.floor(Date.now() / 1000);
         const tokensale = await VLBCrowdsale.new(
             token.address,
-            vault.address,
-            currentTime + 100,
-            currentTime + 1000,
+            vault.address, 0, 0,
             {from: owner, gas: gasAmount});
 
         token.setCrowdsaleAddress(tokensale.address, {from: owner, gas: gasAmount});
@@ -65,9 +59,11 @@ contract('VLBCrowdsale', function (accounts) {
 
         await tokensale.startPresale({from: owner, gas: gasAmount});
 
+        const fiveMilsTokens = web3.toWei("5", "mether");
+
         await token.transferFromPresale(
             presaleBuyerAddress,
-            web3.toWei("5", "mether"),
+            fiveMilsTokens,
             {from: owner, gas: gasAmount});
 
         var presaleBalance = await token.balanceOf.call(presaleTokenWallet, {from: presaleTokenWallet, gas: gasAmount});
@@ -81,7 +77,47 @@ contract('VLBCrowdsale', function (accounts) {
         presaleBalance = await token.balanceOf.call(presaleTokenWallet, {from: presaleTokenWallet, gas: gasAmount});
         assert.equal(presaleBalance, 0, "Failed to transfer from Presale Tokens Wallet");
 
-        const teamBalance = await token.balanceOf(teamWallet, {from: teamWallet, gas: gasAmount});
+        const teamBalance = await token.balanceOf.call(teamWallet, {from: teamWallet, gas: gasAmount});
         assert.equal(form18DecimalsTo1(teamBalance), 35000000, "Insufficient balance on Team Tokens Wallet");
+    });
+
+    it("Check Crowdsale flow", async() => {
+        const token = await VLBToken.new({from: owner, gas: gasAmount});
+        const vault = await VLBRefundVault.new({from: owner, gas: gasAmount});
+
+        var currentTime = Math.floor(Date.now() / 1000);
+
+        const tokensale = await VLBCrowdsale.new(
+            token.address,
+            vault.address, currentTime + 1, currentTime + 5,
+            {from: owner, gas: gasAmount});
+
+        token.setCrowdsaleAddress(tokensale.address, {from: owner, gas: gasAmount});
+        vault.setCrowdsaleAddress(tokensale.address, {from: owner, gas: gasAmount});
+
+        await tokensale.startPresale({from: owner, gas: gasAmount});
+        await tokensale.endPresale({from: owner, gas: gasAmount});
+
+        // End preparation for Crowdsale
+        setTimeout(async() => {
+            await tokensale.startCrowdsale({from: owner, gas: gasAmount});
+
+            var crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
+            assert.equal(form18DecimalsTo1(crowdsaleBalance), 200000000, "Insufficient balance on Crowdsale Tokens Wallet");
+
+            var buyerBalance = await token.balanceOf.call(crowdsaleBuyerAddress, {from: crowdsaleBuyerAddress, gas: gasAmount});
+            assert.equal(buyerBalance, 0, "Failed to transfer to Buyer Tokens Wallet");
+
+            await tokensale.buyTokens(
+                crowdsaleBuyerAddress,
+                {from: crowdsaleBuyerAddress, value: web3.toWei("2", "ether"), gasLimit: gasAmount});
+
+            crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
+            assert.equal(form18DecimalsTo1(crowdsaleBalance), 199998700, "Insufficient balance on Crowdsale Tokens Wallet");
+
+            buyerBalance = await token.balanceOf.call(crowdsaleBuyerAddress, {from: crowdsaleBuyerAddress, gas: gasAmount});
+            assert.equal(form18DecimalsTo1(buyerBalance), 1300, "Failed to transfer to Buyer Tokens Wallet");
+
+        }, 1000);
     });
 });
