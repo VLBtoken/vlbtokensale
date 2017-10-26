@@ -24,12 +24,12 @@ contract VLBCrowdsale is Ownable, Pausable {
     // All the time points relades to the Crowdsale
     // Presale is closed and reflected only as contract state
 
-    // Start time: Nov 27, 2017, 09:00:00 GMT
-    uint startTime = 1511773200;
+    // Start time: Nov 27, 2017, 12:00:00 GMT (1511784000)
+    uint startTime = 1511784000;
 
-    // End time: Dec 22, 2017 17:00:00 GMT, or the date when
+    // End time: Dec 17, 2017 12:00:00 GMT (1513512000), or the date when
     // 200’000’000 VLB Tokens have been sold, whichever occurs first
-    uint endTime = 1513962000;
+    uint endTime = 1513512000;
 
     // minimum amount of funds to be raised in weis
     uint256 goal = 25000000000000000000000; // 25 Kether
@@ -57,6 +57,9 @@ contract VLBCrowdsale is Ownable, Pausable {
      * @param amount amount of tokens purchased
      */
     event TokenPurchase(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
+    event PresaleForTokensaleStated();
+    event PresaleForTokensaleEnded();
+    event CrowdsaleForTokensaleStated();
     event Finalized();
 
     // Crowdsale in the constructor takes addresses of the
@@ -66,10 +69,10 @@ contract VLBCrowdsale is Ownable, Pausable {
     function VLBCrowdsale(address _tokenAdsdress, address _vaultAddress, uint _startTime, uint _endTime) {
         require(_tokenAdsdress != address(0));
         require(_vaultAddress != address(0));
-        require(_startTime > now && startTime < endTime);
-
-        startTime = _startTime;
-        endTime = _endTime;
+        if (_startTime != 0 && _endTime != 0 && _startTime > now && _startTime < _endTime) {
+            startTime = _startTime;
+            endTime = _endTime;
+        }
 
         // VLBToken and VLBRefundVault was deployed separately
         token = VLBToken(_tokenAdsdress);
@@ -81,7 +84,7 @@ contract VLBCrowdsale is Ownable, Pausable {
         buyTokens(msg.sender);
     }
 
-    // You can buy tokens only in Crodsale state
+    // You can buy tokens only in Crowdsale state
     function buyTokens(address beneficiary) payable {
         require(state == TokensaleState.Crowdsale);
         require(beneficiary != address(0));
@@ -92,7 +95,6 @@ contract VLBCrowdsale is Ownable, Pausable {
         // calculate token amount to be created
         uint256 tokens = weiAmount.mul(getConversionRate());
 
-        // update state
         weiRaised = weiRaised.add(weiAmount);
 
         if (!token.transferFromCrowdsale(beneficiary, tokens)) revert();
@@ -104,8 +106,13 @@ contract VLBCrowdsale is Ownable, Pausable {
 
     function startCrowdsale() onlyOwner public {
         require(state == TokensaleState.PresaleEnded);
+        require(now >= startTime);
+
         token.startCrowdsale();
         state = TokensaleState.Crowdsale;
+
+        CrowdsaleForTokensaleStated();
+
     }
 
     // Addresses will be hardcoded. This method exist like this only for testing purposes.
@@ -114,12 +121,16 @@ contract VLBCrowdsale is Ownable, Pausable {
 
         token.issueTokens(teamTokensWallet, bountyTokensWallet, presaleTokensWallet, crowdsaleTokensWallet);
         state = TokensaleState.Presale;
+
+        PresaleForTokensaleStated();
     }
 
     function endPresale() onlyOwner public {
         require(state == TokensaleState.Presale);
         token.endPresale();
         state = TokensaleState.PresaleEnded;
+
+        PresaleForTokensaleEnded();
     }
 
     // @return true if investors can buy at the moment

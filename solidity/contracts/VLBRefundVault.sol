@@ -46,19 +46,19 @@ contract VLBRefundVault is Ownable {
         crowdsaleContractAddress = _crowdsaleAddress;
     }
 
-    function deposit(address investor) onlyCrowdsaleContract public payable {
+    function deposit(address investor) onlyCrowdsaleContract external payable {
         require(state == State.Active);
         deposited[investor] = deposited[investor].add(msg.value);
     }
 
-    function close() onlyCrowdsaleContract public {
+    function close() onlyCrowdsaleContract external {
         require(state == State.Active);
         state = State.Closed;
         Closed();
         wallet.transfer(this.balance);
     }
 
-    function enableRefunds() onlyCrowdsaleContract public {
+    function enableRefunds() onlyCrowdsaleContract external {
         require(state == State.Active);
         state = State.Refunding;
         RefundsEnabled();

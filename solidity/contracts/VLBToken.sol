@@ -88,6 +88,8 @@ contract VLBToken is StandardToken, Ownable {
         balances[crowdsaleTokensWallet] = balances[crowdsaleTokensWallet].add(crowdsaleTokens);
 
         state = TokensState.Presale;
+
+        PresaleStarted();
     }
 
     function setCrowdsaleAddress(address _crowdsaleAddress) external onlyOwner {
@@ -120,7 +122,7 @@ contract VLBToken is StandardToken, Ownable {
         return true;
     }
 
-    // Metod needed only on presale step and used for refill presale tokens
+    // Method needed only on presale step and used for refill presale tokens
     // in case everything from presale tokens amount will be sold out
     function refillPresaleWallet(uint256 _value) onlyOwner public returns (bool) {
         require(state == TokensState.Presale);
@@ -147,6 +149,7 @@ contract VLBToken is StandardToken, Ownable {
     function startCrowdsale() external onlyCrowdsaleContract {
         require(state == TokensState.PresaleEnded);
         state = TokensState.Crowdsale;
+        CrowdsaleStarted();
     }
 
     function endCrowdsale() external onlyCrowdsaleContract {
