@@ -1,10 +1,8 @@
 pragma solidity ^0.4.0;
 
-
 import "./lib/token/StandardToken.sol";
 import "./lib/ownership/Ownable.sol";
 import "./lib/math/SafeMath.sol";
-
 
 contract VLBToken is StandardToken, Ownable {
     using SafeMath for uint256;
@@ -13,15 +11,24 @@ contract VLBToken is StandardToken, Ownable {
     string public constant symbol = "VLB";
     uint8 public decimals = 18;
 
-    uint256 public presaleTokens;
-    uint256 public crowdsaleTokens;
-    uint256 public teamTokens;
-    uint256 public bountyTokens;
+    // 20 millions for presale
+    uint256 public constant presaleTokens = 20 * 10 ** 24;
 
-    address public teamTokensWallet;
-    address public bountyTokensWallet;
-    address public presaleTokensWallet;
-    address public crowdsaleTokensWallet;
+    // 200 millions for ICO itself
+    uint256 public crowdsaleTokens = 200 * 10 ** 24;
+
+    // 20 millions for the team
+    uint256 public teamTokens = 20 * 10 ** 24;
+
+    // 10 millions as a bounty reward
+    uint256 public bountyTokens = 10 * 10 ** 24;
+
+    // TODO: Fake addresses, replace to real
+    address public constant teamTokensWallet = 0xb49fbbd01D8fF9a2bF46B7E4cB31CF8b8CFB96A9;
+    address public constant bountyTokensWallet = 0xfA81DD8Ed3610F2c872bD0a2b7dEd913dDDC1A47;
+    address public constant presaleTokensWallet = 0x995d3876d03CeC2Ae2Dc79dC29E066C9C0A1fBF8;
+    address public constant crowdsaleTokensWallet = 0x4A4A67ddbFbC5A6bbFFe07613fa0599b76f1CC21;
+
 
     address public crowdsaleContractAddress;
 
@@ -43,37 +50,12 @@ contract VLBToken is StandardToken, Ownable {
         state = TokensState.Init;
 
         // 250 millions tokens overall
-        totalSupply = 250 * 10 ** 24;
-
-        // 20 millions for presale
-        presaleTokens = 20 * 10 ** 24;
-
-        // 200 millions for ICO itself
-        crowdsaleTokens = 200 * 10 ** 24;
-
-        // 20 millions for the team
-        teamTokens = 20 * 10 ** 24;
-
-        // 10 millions as a bounty reward
-        bountyTokens = 10 * 10 ** 24;
+        totalSupply = presaleTokens.add(crowdsaleTokens).add(bountyTokens).add(teamTokens);
     }
 
     // Can be called only once
-    function issueTokens(address _teamTokensWallet,
-                         address _bountyTokensWallet,
-                         address _presaleTokensWallet,
-                         address _crowdsaleTokensWallet) external onlyCrowdsaleContract {
-
+    function issueTokens() external onlyCrowdsaleContract {
         require(state == TokensState.Init);
-        require(_teamTokensWallet != address(0) && teamTokensWallet == address(0));
-        require(_bountyTokensWallet != address(0) && bountyTokensWallet == address(0));
-        require(_presaleTokensWallet != address(0) && presaleTokensWallet == address(0));
-        require(_crowdsaleTokensWallet != address(0) && crowdsaleTokensWallet == address(0));
-
-        teamTokensWallet = _teamTokensWallet;
-        bountyTokensWallet = _bountyTokensWallet;
-        presaleTokensWallet = _presaleTokensWallet;
-        crowdsaleTokensWallet = _crowdsaleTokensWallet;
 
         // Issue team tokens
         balances[teamTokensWallet] = balances[teamTokensWallet].add(teamTokens);
@@ -109,7 +91,7 @@ contract VLBToken is StandardToken, Ownable {
     }
 
     function transferFromPresale(address _to, uint256 _value) public returns (bool) {
-        // Can be called by the owner or by the corwdsale contract
+        // Can be called by the owner or by the crowdsale contract
         require(msg.sender == crowdsaleContractAddress || msg.sender == owner);
         require(state == TokensState.Presale);
         require(_to != address(0));
@@ -167,12 +149,12 @@ contract VLBToken is StandardToken, Ownable {
 
     function endPresale() external onlyCrowdsaleContract {
         require(state == TokensState.Presale);
-        var presaleTokensLefovers = balanceOf(presaleTokensWallet);
-        if (presaleTokensLefovers > 0) {
-            if (!transferFromPresale(teamTokensWallet, presaleTokensLefovers)) revert();
+        var presaleTokensLeftovers = balanceOf(presaleTokensWallet);
+        if (presaleTokensLeftovers > 0) {
+            if (!transferFromPresale(teamTokensWallet, presaleTokensLeftovers)) revert();
         }
 
         state = TokensState.PresaleEnded;
-        PresaleEnded(presaleTokensLefovers);
+        PresaleEnded(presaleTokensLeftovers);
     }
 }

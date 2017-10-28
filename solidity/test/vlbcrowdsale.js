@@ -113,10 +113,10 @@ contract('VLBCrowdsale', function (accounts) {
                 {from: crowdsaleBuyerAddress, value: web3.toWei("2", "ether"), gasLimit: gasAmount});
 
             crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
-            assert.equal(form18DecimalsTo1(crowdsaleBalance), 199998700, "Insufficient balance on Crowdsale Tokens Wallet");
+            assert.equal(form18DecimalsTo1(crowdsaleBalance), 199998310, "Insufficient balance on Crowdsale Tokens Wallet");
 
             buyerBalance = await token.balanceOf.call(crowdsaleBuyerAddress, {from: crowdsaleBuyerAddress, gas: gasAmount});
-            assert.equal(form18DecimalsTo1(buyerBalance), 1300, "Failed to transfer to Buyer Tokens Wallet");
+            assert.equal(form18DecimalsTo1(buyerBalance), 1690, "Failed to transfer to Buyer Tokens Wallet");
 
         }, 1000);
     });

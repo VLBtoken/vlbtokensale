@@ -21,33 +21,25 @@ contract VLBCrowdsale is Ownable, Pausable {
     // Refund vault used to hold funds while crowdsale is running
     VLBRefundVault public vault;
 
-    // All the time points relades to the Crowdsale
+    // All the time points relates to the Crowdsale
     // Presale is closed and reflected only as contract state
 
     // Start time: Nov 27, 2017, 12:00:00 GMT (1511784000)
     uint startTime = 1511784000;
 
     // End time: Dec 17, 2017 12:00:00 GMT (1513512000), or the date when
-    // 200’000’000 VLB Tokens have been sold, whichever occurs first
+    // 300’000 ether have been collected, whichever occurs first
     uint endTime = 1513512000;
 
-    // minimum amount of funds to be raised in weis
-    uint256 goal = 25000000000000000000000; // 25 Kether
-
-    // minimum amount of funds to be raised in weis
-    uint256 cap = 300000000000000000000000; // 300 Kether
+    // minimum and maximum amount of funds to be raised in weis
+    uint256 public constant goal = 25000000000000000000000;  // 25 Kether
+    uint256 public constant cap  = 300000000000000000000000; // 300 Kether
 
     // amount of raised money in wei
     uint256 public weiRaised;
 
     // tokensale finalization flag
     bool public isFinalized = false;
-
-    // TODO: Fake addresses, replace to real
-    address public constant teamTokensWallet = 0xb49fbbd01D8fF9a2bF46B7E4cB31CF8b8CFB96A9;
-    address public constant bountyTokensWallet = 0xfA81DD8Ed3610F2c872bD0a2b7dEd913dDDC1A47;
-    address public constant presaleTokensWallet = 0x995d3876d03CeC2Ae2Dc79dC29E066C9C0A1fBF8;
-    address public constant crowdsaleTokensWallet = 0x4A4A67ddbFbC5A6bbFFe07613fa0599b76f1CC21;
 
     /**
      * event for token purchase logging
@@ -64,10 +56,9 @@ contract VLBCrowdsale is Ownable, Pausable {
 
     // Crowdsale in the constructor takes addresses of the
     // just deployed VLBToken and VLBRefundVault contracts
-    // startTime and endTime here are temporary,
-    // for testing purposes only
-    function VLBCrowdsale(address _tokenAdsdress, address _vaultAddress, uint _startTime, uint _endTime) {
-        require(_tokenAdsdress != address(0));
+    // TODO: startTime and endTime here are temporary, for testing purposes only
+    function VLBCrowdsale(address _tokenAddress, address _vaultAddress, uint _startTime, uint _endTime) {
+        require(_tokenAddress != address(0));
         require(_vaultAddress != address(0));
         if (_startTime != 0 && _endTime != 0 && _startTime > now && _startTime < _endTime) {
             startTime = _startTime;
@@ -75,8 +66,10 @@ contract VLBCrowdsale is Ownable, Pausable {
         }
 
         // VLBToken and VLBRefundVault was deployed separately
-        token = VLBToken(_tokenAdsdress);
+        token = VLBToken(_tokenAddress);
         vault = VLBRefundVault(_vaultAddress);
+
+        state = TokensaleState.Init;
     }
 
     // fallback function can be used to buy tokens
@@ -115,11 +108,10 @@ contract VLBCrowdsale is Ownable, Pausable {
 
     }
 
-    // Addresses will be hardcoded. This method exist like this only for testing purposes.
      function startPresale() onlyOwner public {
         require(state == TokensaleState.Init);
 
-        token.issueTokens(teamTokensWallet, bountyTokensWallet, presaleTokensWallet, crowdsaleTokensWallet);
+        token.issueTokens();
         state = TokensaleState.Presale;
 
         PresaleForTokensaleStated();
@@ -144,7 +136,8 @@ contract VLBCrowdsale is Ownable, Pausable {
     // @return true if crowdsale event has ended
     function hasEnded() public constant returns (bool) {
         bool capReached = weiRaised >= cap;
-        return now > endTime && capReached;
+        bool timeIsUp = now > endTime;
+        return timeIsUp && capReached;
     }
 
     // if crowdsale is unsuccessful, investors can claim refunds here
@@ -188,19 +181,19 @@ contract VLBCrowdsale is Ownable, Pausable {
     }
 
     function getConversionRate() public constant returns (uint256) {
-        if (now > startTime + 15 days) {
+        if (now >= startTime + 15 days) {
             return 650;
             // 650
         }
-        else if (now > startTime + 10 days) {
+        else if (now >= startTime + 10 days) {
             return 715;
             // 650 + 10%
         }
-        else if (now > startTime + 5 days) {
+        else if (now >= startTime + 5 days) {
             return 780;
             // 650 + 20%
         }
-        else if (now > startTime) {
+        else if (now >= startTime) {
             return 845;
             // 650 + 30%
         }

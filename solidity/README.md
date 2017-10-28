@@ -1,6 +1,25 @@
-Репозиторий проекта ICO VLB Tokens
+##ICO VLB Tokens Contracts
 
-### Назначение ###
+This repository contains Solidity smart contracts, deploy manifests and tests for VLB Tokens ICO campaign.
 
-* Данный репозиторий содержит смарт контракт ethereum для ICO VLB Tokens, тесты и все что потребуется для смарт контрактов
-* Версия: 1
+### How do I get set up? ###
+Console #1
+```
+$: npm install -g yarn
+$: yarn install
+```
+
+Console #2
+```
+$: ./run-testrpc.sh
+```
+
+Console #1
+```
+$: npm run compile
+$: npm run migrate
+$: npm test
+```
+
+
+
