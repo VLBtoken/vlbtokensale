@@ -15,13 +15,13 @@ contract VLBToken is StandardToken, Ownable {
     uint256 public constant presaleTokens = 20 * 10 ** 24;
 
     // 200 millions for ICO itself
-    uint256 public crowdsaleTokens = 200 * 10 ** 24;
+    uint256 public constant crowdsaleTokens = 200 * 10 ** 24;
 
     // 20 millions for the team
-    uint256 public teamTokens = 20 * 10 ** 24;
+    uint256 public constant teamTokens = 20 * 10 ** 24;
 
     // 10 millions as a bounty reward
-    uint256 public bountyTokens = 10 * 10 ** 24;
+    uint256 public constant bountyTokens = 10 * 10 ** 24;
 
     // TODO: Fake addresses, replace to real
     address public constant teamTokensWallet = 0xb49fbbd01D8fF9a2bF46B7E4cB31CF8b8CFB96A9;

@@ -1,12 +1,34 @@
-# README #
+## ICO VLB Tokens Contracts ##
 
-This README would normally document whatever steps are necessary to get your application up and running.
+This repository contains Solidity smart contracts, deploy manifests and tests for VLB Tokens ICO campaign.
 
-### What is this repository for? ###
+### How do I get set up? ###
+Console #1
+```
+$: npm install -g yarn
+$: yarn install
+```
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+Console #2
+```
+$: ./run-testrpc.sh
+```
+
+Console #1
+```
+$: yarn test
+```
+
+### Update your code ###
+Force recompile
+```
+$: yarn compile
+```
+
+Force migration
+```
+$: yarn migrate
+```
 
 
 

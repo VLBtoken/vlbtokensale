@@ -32,8 +32,8 @@ contract VLBCrowdsale is Ownable, Pausable {
     uint endTime = 1513512000;
 
     // minimum and maximum amount of funds to be raised in weis
-    uint256 public constant goal = 25000000000000000000000;  // 25 Kether
-    uint256 public constant cap  = 300000000000000000000000; // 300 Kether
+    uint256 public constant goal = 25 * 10**21;  // 25 Kether
+    uint256 public constant cap  = 300 * 10**21; // 300 Kether
 
     // amount of raised money in wei
     uint256 public weiRaised;
@@ -84,6 +84,7 @@ contract VLBCrowdsale is Ownable, Pausable {
         require(validPurchase(msg.value));
 
         uint256 weiAmount = msg.value;
+        address buyer = msg.sender;
 
         // calculate token amount to be created
         uint256 tokens = weiAmount.mul(getConversionRate());
@@ -92,9 +93,9 @@ contract VLBCrowdsale is Ownable, Pausable {
 
         if (!token.transferFromCrowdsale(beneficiary, tokens)) revert();
 
-        TokenPurchase(msg.sender, beneficiary, weiAmount, tokens);
+        TokenPurchase(buyer, beneficiary, weiAmount, tokens);
 
-        vault.deposit.value(msg.value)(msg.sender);
+        vault.deposit.value(weiAmount)(buyer);
     }
 
     function startCrowdsale() onlyOwner public {

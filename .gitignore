@@ -1,4 +1,3 @@
-.DS_Store
 .idea/
-solidity/node_modules
-solidity/build
+node_modules
+build
