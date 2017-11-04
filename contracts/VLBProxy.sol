@@ -1,13 +1,11 @@
 pragma solidity ^0.4.0;
-
-
 import './lib/lifecycle/Pausable.sol';
-
 
 contract VLBProxy is Pausable {
     address public icoContractAddress;
 
     function VLBProxy(address adr) public {
+        require(adr != address(0));
         icoContractAddress = adr;
     }
 

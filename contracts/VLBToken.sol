@@ -136,7 +136,7 @@ contract VLBToken is StandardToken, Ownable {
 
     function endCrowdsale() external onlyCrowdsaleContract {
         require(state == TokensState.Crowdsale);
-        var crowdsaleLeftovers = balanceOf(crowdsaleTokensWallet);
+        uint256 crowdsaleLeftovers = balanceOf(crowdsaleTokensWallet);
         if (crowdsaleLeftovers > 0) {
             totalSupply = totalSupply.sub(crowdsaleLeftovers);
             balances[crowdsaleTokensWallet] = 0;
@@ -149,7 +149,7 @@ contract VLBToken is StandardToken, Ownable {
 
     function endPresale() external onlyCrowdsaleContract {
         require(state == TokensState.Presale);
-        var presaleTokensLeftovers = balanceOf(presaleTokensWallet);
+        uint256 presaleTokensLeftovers = balanceOf(presaleTokensWallet);
         if (presaleTokensLeftovers > 0) {
             if (!transferFromPresale(teamTokensWallet, presaleTokensLeftovers)) revert();
         }
