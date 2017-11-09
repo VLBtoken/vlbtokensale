@@ -7,83 +7,103 @@ import "./lib/lifecycle/Pausable.sol";
 import "./VLBToken.sol";
 import "./VLBRefundVault.sol";
 
-
+/**
+ * @title VLBCrowdsale
+ * @dev VLB crowdsale contract borrows Zeppelin Finalized, Capped and Refundable crowdsales implementations
+ */
 contract VLBCrowdsale is Ownable, Pausable {
     using SafeMath for uint;
 
-    // Tokensale state machine
-    enum TokensaleState {Init, Presale, PresaleEnded, Crowdsale, CrowdsaleEnded}
-    TokensaleState public state;
-
-    // Token contract
+    /**
+     * @dev token contract
+     */
     VLBToken public token;
 
-    // Refund vault used to hold funds while crowdsale is running
+    /**
+     * @dev refund vault used to hold funds while crowdsale is running
+     */
     VLBRefundVault public vault;
 
-    // All the time points relates to the Crowdsale
-    // Presale is closed and reflected only as contract state
+    /**
+     * @dev tokensale(presale) start time: Nov 22, 2017, 12:00:00 GMT (1511352000)
+     */
+    uint startTime = 1511352000;
 
-    // Start time: Nov 27, 2017, 12:00:00 GMT (1511784000)
-    uint startTime = 1511784000;
-
-    // End time: Dec 17, 2017 12:00:00 GMT (1513512000), or the date when
-    // 300’000 ether have been collected, whichever occurs first
+    /**
+     * @dev tokensale end time: Dec 17, 2017 12:00:00 GMT (1513512000), or the date when
+     *       300’000 ether have been collected, whichever occurs first. see hasEnded()
+     *       for more details
+     */
     uint endTime = 1513512000;
 
-    // minimum and maximum amount of funds to be raised in weis
+    /**
+     * @dev minimum purchase amount for presale
+     */
+    uint256 public constant minPresaleAmount = 300 * 10**18; // 300 ether
+
+    /**
+     * @dev minimum and maximum amount of funds to be raised in weis
+     */
     uint256 public constant goal = 25 * 10**21;  // 25 Kether
     uint256 public constant cap  = 300 * 10**21; // 300 Kether
 
-    // amount of raised money in wei
+    /**
+     * @dev amount of raised money in wei
+     */
     uint256 public weiRaised;
 
-    // tokensale finalization flag
+    /**
+     * @dev tokensale finalization flag
+     */
     bool public isFinalized = false;
 
     /**
-     * event for token purchase logging
+     * @dev event for token purchase logging
      * @param purchaser who paid for the tokens
      * @param beneficiary who got the tokens
      * @param value weis paid for purchase
      * @param amount amount of tokens purchased
      */
     event TokenPurchase(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
-    event PresaleForTokensaleStated();
-    event PresaleForTokensaleEnded();
-    event CrowdsaleForTokensaleStated();
+
+    /**
+     * @dev event for tokensale final logging
+     */
     event Finalized();
 
-    // Crowdsale in the constructor takes addresses of the
-    // just deployed VLBToken and VLBRefundVault contracts
-    // TODO: startTime and endTime here are temporary, for testing purposes only
-    function VLBCrowdsale(address _tokenAddress, address _vaultAddress, uint _startTime, uint _endTime) {
+    /**
+     * @dev Crowdsale in the constructor takes addresses of
+     *      the just deployed VLBToken and VLBRefundVault contracts
+     * @param _tokenAddress address of the VLBToken deployed contract
+     * @param _vaultAddress address of the VLBRefundVault deployed contract
+     */
+    function VLBCrowdsale(address _tokenAddress, address _vaultAddress) {
         require(_tokenAddress != address(0));
         require(_vaultAddress != address(0));
-        if (_startTime != 0 && _endTime != 0 && _startTime > now && _startTime < _endTime) {
-            startTime = _startTime;
-            endTime = _endTime;
-        }
 
         // VLBToken and VLBRefundVault was deployed separately
         token = VLBToken(_tokenAddress);
         vault = VLBRefundVault(_vaultAddress);
-
-        state = TokensaleState.Init;
     }
 
-    // fallback function can be used to buy tokens
+    /**
+     * @dev fallback function can be used to buy tokens
+     */
     function() payable {
         buyTokens(msg.sender);
     }
 
-    // You can buy tokens only in Crowdsale state
-    function buyTokens(address beneficiary) payable {
-        require(state == TokensaleState.Crowdsale);
+    /**
+     * @dev main function to buy tokens
+     * @param beneficiary target wallet for tokens can vary from the sender one
+     */
+    function buyTokens(address beneficiary) public payable {
         require(beneficiary != address(0));
         require(validPurchase(msg.value));
 
         uint256 weiAmount = msg.value;
+
+        // buyer and beneficiary could be two different wallets
         address buyer = msg.sender;
 
         // calculate token amount to be created
@@ -98,50 +118,35 @@ contract VLBCrowdsale is Ownable, Pausable {
         vault.deposit.value(weiAmount)(buyer);
     }
 
-    function startCrowdsale() onlyOwner public {
-        require(state == TokensaleState.PresaleEnded);
-        require(now >= startTime);
-
-        token.startCrowdsale();
-        state = TokensaleState.Crowdsale;
-
-        CrowdsaleForTokensaleStated();
-
-    }
-
-     function startPresale() onlyOwner public {
-        require(state == TokensaleState.Init);
-
-        token.issueTokens();
-        state = TokensaleState.Presale;
-
-        PresaleForTokensaleStated();
-    }
-
-    function endPresale() onlyOwner public {
-        require(state == TokensaleState.Presale);
-        token.endPresale();
-        state = TokensaleState.PresaleEnded;
-
-        PresaleForTokensaleEnded();
-    }
-
-    // @return true if investors can buy at the moment
-    function validPurchase(uint256 _value) constant returns (bool) {
-        bool withinPeriod = now >= startTime && now <= endTime;
+    /**
+     * @dev check if the current purchase valid based on time and amount of passed ether
+     * @param _value amount of passed ether
+     * @return true if investors can buy at the moment
+     */
+    function validPurchase(uint256 _value) internal constant returns (bool) {
         bool nonZeroPurchase = _value != 0;
+        bool withinPeriod = now >= startTime && now <= endTime;
         bool withinCap = weiRaised.add(_value) <= cap;
-        return withinPeriod && nonZeroPurchase && withinCap;
+        // For presale we want to decline all payments less then minPresaleAmount
+        bool withinAmount =
+            now >= startTime + 5 days || msg.value >= minPresaleAmount;
+
+        return nonZeroPurchase && withinPeriod && withinCap && withinAmount;
     }
 
-    // @return true if crowdsale event has ended
+    /**
+     * @dev check if crowdsale still active based on current time and cap
+     * @return true if crowdsale event has ended
+     */
     function hasEnded() public constant returns (bool) {
         bool capReached = weiRaised >= cap;
         bool timeIsUp = now > endTime;
-        return timeIsUp && capReached;
+        return timeIsUp || capReached;
     }
 
-    // if crowdsale is unsuccessful, investors can claim refunds here
+    /**
+     * @dev if crowdsale is unsuccessful, investors can claim refunds here
+     */
     function claimRefund() public {
         require(isFinalized);
         require(!goalReached());
@@ -150,55 +155,52 @@ contract VLBCrowdsale is Ownable, Pausable {
     }
 
     /**
-     * @dev Must be called after crowdsale ends, to do some extra finalization
-     * work. Calls the contract's finalization function.
-    */
+     * @dev finalize crowdsale. this method triggers vault and token finalization
+     */
     function finalize() onlyOwner public {
         require(!isFinalized);
         require(hasEnded());
-        require(state == TokensaleState.Crowdsale);
 
-        finalization();
-        Finalized();
-
-        isFinalized = true;
-    }
-
-    // vault finalization task, called when owner calls finalize()
-    function finalization() internal {
+        // trigger vault and token finalization
         if (goalReached()) {
             vault.close();
-        }
-        else {
+        } else {
             vault.enableRefunds();
         }
 
-        token.endCrowdsale();
-        state = TokensaleState.CrowdsaleEnded;
+        token.endTokensale();
+        isFinalized = true;
+
+        Finalized();
     }
 
+    /**
+     * @dev check if hard cap goal is reached
+     */
     function goalReached() public constant returns (bool) {
         return weiRaised >= goal;
     }
 
+    /**
+     * @dev returns current token price based on current presale time frame
+     */
     function getConversionRate() public constant returns (uint256) {
-        if (now >= startTime + 15 days) {
+        if (now >= startTime + 20 days) {
             return 650;
-            // 650
-        }
-        else if (now >= startTime + 10 days) {
+            // 650        Crowdasle Part 4
+        } else if (now >= startTime + 15 days) {
             return 715;
-            // 650 + 10%
-        }
-        else if (now >= startTime + 5 days) {
+            // 650 + 10%. Crowdasle Part 3
+        } else if (now >= startTime + 10 days) {
             return 780;
-            // 650 + 20%
-        }
-        else if (now >= startTime) {
+            // 650 + 20%. Crowdasle Part 2
+        } else if (now >= startTime + 5 days) {
             return 845;
-            // 650 + 30%
+            // 650 + 30%. Crowdasle Part 1
+        } else if (now >= startTime) {
+            return 910;
+            // 650 + 40%. Presale
         }
-
-        return 650;
+        return 0;
     }
 }

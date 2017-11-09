@@ -5,12 +5,14 @@ import './lib/math/SafeMath.sol';
 import './lib/ownership/Ownable.sol';
 
 /*
-* Based on Open Zeppelin Refund Valut contract
-* https://github.com/OpenZeppelin/zeppelin-solidity/blob/master/contracts/crowdsale/RefundVault.sol
-*/
+ * !!!IMPORTANT!!!
+ * Based on Open Zeppelin Refund Vault contract
+ * https://github.com/OpenZeppelin/zeppelin-solidity/blob/master/contracts/crowdsale/RefundVault.sol
+ * the only thing that differs is a hardcoded wallet address
+ */
 
 /**
- * @title RefundVault
+ * @title RefundVault.
  * @dev This contract is used for storing funds while a crowdsale
  * is in progress. Supports refunding the money if crowdsale fails,
  * and forwarding it if crowdsale is successful.
@@ -23,7 +25,7 @@ contract VLBRefundVault is Ownable {
 
     mapping (address => uint256) public deposited;
 
-    // TODO: Fake addresses, replace to real
+    // TODO: TestRPC addresses, replace to real
     address public constant wallet = 0x6aEeE7E0088C067641f8E5a8B83003a7040C65e5;
 
     address crowdsaleContractAddress;
