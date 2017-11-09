@@ -38,6 +38,10 @@ let server = TestRPC.server({
         { // gamechangerAccountAddress
             balance: '26000000000000000000000', // 25 Kether
             secretKey: "0x35f4051897dafc7e5d14a7fc62dff12e27419809662af10f8253e700d44dbf8d"
+        },
+        {
+            balance: "0",
+            secretKey: "0x78239a97f0abb5ddef85e259c1e5960a62f247b96bcb83571cb74601a851898e"
         }
     ]
 });

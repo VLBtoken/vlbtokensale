@@ -53,10 +53,13 @@ contract VLBRefundVault is Ownable {
         deposited[investor] = deposited[investor].add(msg.value);
     }
 
-    function close() onlyCrowdsaleContract external {
+    function close(address _wingsWallet) onlyCrowdsaleContract external {
+        require(_wingsWallet != address(0));
         require(state == State.Active);
         state = State.Closed;
         Closed();
+        uint256 wingsReward = this.balance.div(100);
+        _wingsWallet.transfer(wingsReward);
         wallet.transfer(this.balance);
     }
 
