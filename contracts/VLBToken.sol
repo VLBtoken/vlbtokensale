@@ -60,7 +60,7 @@ contract VLBToken is StandardToken, Ownable {
 
     /**
      * @dev event for the tokens contract move to the active state logging
-     * @param totalSupply amount of tokens left after all the unsold was burned
+     * @param supply amount of tokens left after all the unsold was burned
      */
     event Live(uint256 supply);
 
