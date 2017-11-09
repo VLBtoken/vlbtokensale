@@ -9,15 +9,7 @@ Console #1
 ```
 $: npm install -g yarn
 $: yarn install
-```
-
-Console #2
-```
-$: ./run-testrpc.sh
-```
-
-Console #1
-```
+$: yarn testrpc
 $: yarn test
 ```
 
