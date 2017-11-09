@@ -5,7 +5,7 @@
 This repository contains Solidity smart contracts, deploy manifests and tests for VLB Tokens ICO campaign.
 
 ### How do I get set up? ###
-Console #1
+Build and run
 ```
 $: npm install -g yarn
 $: yarn install
