@@ -25,12 +25,12 @@ contract VLBCrowdsale is Ownable, Pausable {
     VLBRefundVault public vault;
 
     /**
-     * @dev tokensale(presale) start time: Nov 22, 2017, 12:00:00 GMT (1511352000)
+     * @dev tokensale(presale) start time: Nov 22, 2017, 12:00:00 UTC (1511352000)
      */
     uint startTime = 1511352000;
 
     /**
-     * @dev tokensale end time: Dec 17, 2017 12:00:00 GMT (1513512000), or the date when
+     * @dev tokensale end time: Dec 17, 2017 12:00:00 UTC (1513512000), or the date when
      *       300’000 ether have been collected, whichever occurs first. see hasEnded()
      *       for more details
      */
