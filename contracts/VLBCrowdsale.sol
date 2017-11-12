@@ -1,4 +1,4 @@
-pragma solidity ^0.4.0;
+pragma solidity ^0.4.15;
 
 
 import "./lib/math/SafeMath.sol";
@@ -117,7 +117,9 @@ contract VLBCrowdsale is Ownable, Pausable {
 
         weiRaised = weiRaised.add(weiAmount);
 
-        if (!token.transferFromCrowdsale(beneficiary, tokens)) revert();
+        if (!token.transferFromCrowdsale(beneficiary, tokens)) {
+            revert();
+        }
 
         TokenPurchase(buyer, beneficiary, weiAmount, tokens);
 

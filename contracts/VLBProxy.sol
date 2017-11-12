@@ -1,4 +1,4 @@
-pragma solidity ^0.4.0;
+pragma solidity ^0.4.15;
 import './lib/lifecycle/Pausable.sol';
 
 contract VLBProxy is Pausable {
@@ -15,7 +15,9 @@ contract VLBProxy is Pausable {
     }
 
     function() public {
-        if (!icoContractAddress.delegatecall(msg.data)) revert();
+        if (!icoContractAddress.delegatecall(msg.data)) {
+            revert();
+        }
     }
 
     function destroy() onlyOwner whenPaused public {
