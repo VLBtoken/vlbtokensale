@@ -39,7 +39,7 @@ contract VLBCrowdsale is Ownable, Pausable {
     /**
      * @dev minimum purchase amount for presale
      */
-    uint256 public constant minPresaleAmount = 100 * 10**18; // 300 ether
+    uint256 public constant minPresaleAmount = 100 * 10**18; // 100 ether
 
     /**
      * @dev minimum and maximum amount of funds to be raised in weis
