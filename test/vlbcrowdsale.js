@@ -51,15 +51,15 @@ contract('VLBCrowdsale', function (accounts) {
 
         await tokensale.buyTokens(
             presaleBuyerAddress,
-            {from: presaleBuyerAddress, value: web3.toWei("300", "ether"), gasLimit: gasAmount});
+            {from: presaleBuyerAddress, value: web3.toWei("100", "ether"), gasLimit: gasAmount});
 
         // Buy tokens by 910 price
         const tokenBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(tokenBalance), 217227000, "Test #2: Failed to transfer from Presale Tokens Wallet");
+        assert.equal(form18DecimalsTo1(tokenBalance), 217409000, "Test #2: Failed to transfer from Presale Tokens Wallet");
 
         // Buyer balance needs to be 910 * 300
         const buyerTokenBalance = await token.balanceOf.call(presaleBuyerAddress, {from: presaleBuyerAddress, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(buyerTokenBalance), 273000, "Test #2: Failed to transfer to Buyer Tokens Wallet");
+        assert.equal(form18DecimalsTo1(buyerTokenBalance), 91000, "Test #2: Failed to transfer to Buyer Tokens Wallet");
     });
 
     it("Check Crowdsale flow", async() => {
