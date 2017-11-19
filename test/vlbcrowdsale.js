@@ -13,7 +13,7 @@ contract('VLBCrowdsale', function (accounts) {
     const owner = "0x156419fc32aB83B78421d3881397c2167A5FA552";
     const gamechangerBuyerAddress = "0xb0715271307d9749e7e12ce3ec66091f033f3240";
     const wingsWallet = "0x57f856B7314A73478FC01fbc76B92D4F2c2579bf";
-    const gasAmount = 1501445;
+    const gasAmount = 1500000;
 
     function form18DecimalsTo1(source) {
         return source.dividedBy(new BigNumber(10).pow(18)).toNumber();
@@ -183,6 +183,11 @@ contract('VLBCrowdsale', function (accounts) {
 
         await tokensale.finalize({from: owner, gas: gasAmount});
 
+        await tokensale.pause({from: owner, gas: gasAmount});
+        await tokensale.kill({from: owner, gas: gasAmount});
+
+        await vault.kill({from: owner, gas: gasAmount});
+
         crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
         assert.equal(form18DecimalsTo1(crowdsaleBalance), 0, "Test #4: Insufficient final balance on Crowdsale Tokens Wallet");
 
@@ -202,5 +207,5 @@ contract('VLBCrowdsale', function (accounts) {
         // Check total supply
         const totalSupply = await token.totalSupply.call({from: owner, gas: gasAmount})
         assert.equal(form18DecimalsTo1(totalSupply), 46712500, "Innsificient total supplay amount on tokensale end");
-    });    
+    });
 });
