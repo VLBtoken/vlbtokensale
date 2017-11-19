@@ -34,9 +34,14 @@ contract VLBToken is StandardToken, Ownable {
     uint256 public constant bountyTokens = 10 * 10 ** 24;
 
     /**
-     * @dev 2.5 millions as an initial wings.ai reward
+     * @dev 2.5 millions as an initial wings.ai reward reserv
      */
-    uint256 public constant wingsTokens = 25 * 10 ** 23;
+    uint256 public constant wingsTokensReserv = 25 * 10 ** 23;
+    
+    /**
+     * @dev wings.ai reward calculated on tokensale finalization
+     */
+    uint256 public wingsTokensReward = 0;
 
     // TODO: TestRPC addresses, replace to real
     address public constant teamTokensWallet = 0xb49fbbd01D8fF9a2bF46B7E4cB31CF8b8CFB96A9;
@@ -89,7 +94,7 @@ contract VLBToken is StandardToken, Ownable {
 
         // Issue crowdsale tokens minus initial wings reward.
         // see endTokensale for more details about final wings.ai reward
-        balances[crowdsaleTokensWallet] = balanceOf(crowdsaleTokensWallet).add(publicTokens.sub(wingsTokens));
+        balances[crowdsaleTokensWallet] = balanceOf(crowdsaleTokensWallet).add(publicTokens.sub(wingsTokensReserv));
 
         // 250 millions tokens overall
         totalSupply = publicTokens.add(bountyTokens).add(teamTokens);
@@ -113,15 +118,19 @@ contract VLBToken is StandardToken, Ownable {
     function endTokensale(address _wingsWallet) onlyCrowdsaleContract external {
         require(_wingsWallet != address(0));
         uint256 crowdsaleLeftovers = balanceOf(crowdsaleTokensWallet);
-        uint256 wingsReward = wingsTokens;
+        
         if (crowdsaleLeftovers > 0) {
-            totalSupply = totalSupply.sub(crowdsaleLeftovers);
-            wingsReward = totalSupply.div(100);
+            totalSupply = totalSupply.sub(crowdsaleLeftovers).sub(wingsTokensReserv);
+            wingsTokensReward = totalSupply.div(100);
+            totalSupply = totalSupply.add(wingsTokensReward);
 
             balances[crowdsaleTokensWallet] = 0;
             TokensBurnt(crowdsaleLeftovers);
+        } else {
+            wingsTokensReward = wingsTokensReserv;
         }
-        balances[_wingsWallet] = balanceOf(_wingsWallet).add(wingsReward);
+        
+        balances[_wingsWallet] = balanceOf(_wingsWallet).add(wingsTokensReward);
 
         Live(totalSupply);
     }
