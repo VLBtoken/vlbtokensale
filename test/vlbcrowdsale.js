@@ -13,7 +13,7 @@ contract('VLBCrowdsale', function (accounts) {
     const owner = "0x156419fc32aB83B78421d3881397c2167A5FA552";
     const gamechangerBuyerAddress = "0xb0715271307d9749e7e12ce3ec66091f033f3240";
     const wingsWallet = "0x57f856B7314A73478FC01fbc76B92D4F2c2579bf";
-    const gasAmount = 1500000;
+    const gasAmount = 1501445;
 
     function form18DecimalsTo1(source) {
         return source.dividedBy(new BigNumber(10).pow(18)).toNumber();
@@ -27,18 +27,31 @@ contract('VLBCrowdsale', function (accounts) {
     it("Check initial balances", async() => {
         const token = await VLBToken.new({from: owner, gas: gasAmount});
 
-        const teamBalance = await token.balanceOf(teamWallet, {from: teamWallet, gas: gasAmount});
+        const teamBalance = await token.balanceOf.call(teamWallet, {from: teamWallet, gas: gasAmount});
         assert.equal(form18DecimalsTo1(teamBalance), 20000000, "Test #1: Insufficient balance on Team Tokens Wallet");
 
-        const bountyBalance = await token.balanceOf(bountyTokenWallet, {from: bountyTokenWallet, gas: gasAmount});
+        const bountyBalance = await token.balanceOf.call(bountyTokenWallet, {from: bountyTokenWallet, gas: gasAmount});
         assert.equal(form18DecimalsTo1(bountyBalance), 10000000, "Test #1: Insufficient balance on Bounty Tokens Wallet");
 
-        const crowdsaleBalance = await token.balanceOf(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
+        const crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
         assert.equal(form18DecimalsTo1(crowdsaleBalance), 217500000, "Test #1: Insufficient balance on Crowdsale Tokens Wallet");
         
         // Check total supply
         const totalSupply = await token.totalSupply.call({from: owner, gas: gasAmount});
         assert.equal(form18DecimalsTo1(totalSupply), 250000000, "Insufficient totalSupply amount");
+    });
+
+    it("Check bounty transfer flow", async() => {
+        const token = await VLBToken.new({from: owner, gas: gasAmount});
+
+        // Transfer
+        await token.transfer(crowdsaleBuyerAddress, web3.toWei("500", "kether"), {from: bountyTokenWallet, gas: gasAmount});
+
+        var balance = await token.balanceOf.call(bountyTokenWallet, {from:bountyTokenWallet, gas: gasAmount});
+        assert.equal(form18DecimalsTo1(balance), 9500000, "Test #4: Failed to final transfer to Buyer Tokens Wallet");    
+
+        balance = await token.balanceOf.call(crowdsaleBuyerAddress, {from:crowdsaleBuyerAddress, gas: gasAmount});
+        assert.equal(form18DecimalsTo1(balance), 500000, "Transfer: Insufficient balance on Crowdsale Tokens Wallet after tarnsfer");
     });
 
     it("Check Presale flow", async() => {
@@ -189,5 +202,5 @@ contract('VLBCrowdsale', function (accounts) {
         // Check total supply
         const totalSupply = await token.totalSupply.call({from: owner, gas: gasAmount})
         assert.equal(form18DecimalsTo1(totalSupply), 46712500, "Innsificient total supplay amount on tokensale end");
-    });
+    });    
 });
