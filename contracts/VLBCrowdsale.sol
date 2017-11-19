@@ -57,12 +57,6 @@ contract VLBCrowdsale is Ownable, Pausable {
      */
     bool public isFinalized = false;
 
-    // TODO: TestRPC addresses, replace to real
-    /**
-     * @dev wings.ai wallet for reward collecting
-     */
-    address public constant wingsWallet = 0x57f856B7314A73478FC01fbc76B92D4F2c2579bf;
-
     /**
      * @dev event for token purchase logging
      * @param purchaser who paid for the tokens
@@ -117,7 +111,7 @@ contract VLBCrowdsale is Ownable, Pausable {
 
         weiRaised = weiRaised.add(weiAmount);
 
-        if (!token.transferFromCrowdsale(beneficiary, tokens)) {
+        if (!token.transferFrom(token.crowdsaleTokensWallet(), beneficiary, tokens)) {
             revert();
         }
 
@@ -170,12 +164,12 @@ contract VLBCrowdsale is Ownable, Pausable {
 
         // trigger vault and token finalization
         if (goalReached()) {
-            vault.close(wingsWallet);
+            vault.close(token.wingsWallet());
         } else {
             vault.enableRefunds();
         }
 
-        token.endTokensale(wingsWallet);
+        token.endTokensale();
         isFinalized = true;
 
         Finalized();
