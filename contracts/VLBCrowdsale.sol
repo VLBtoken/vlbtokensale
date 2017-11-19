@@ -97,7 +97,7 @@ contract VLBCrowdsale is Ownable, Pausable {
      * @dev main function to buy tokens
      * @param beneficiary target wallet for tokens can vary from the sender one
      */
-    function buyTokens(address beneficiary) public payable {
+    function buyTokens(address beneficiary) whenNotPaused public payable {
         require(beneficiary != address(0));
         require(validPurchase(msg.value));
 
