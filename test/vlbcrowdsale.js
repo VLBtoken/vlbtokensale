@@ -13,7 +13,7 @@ contract('VLBCrowdsale', function (accounts) {
     const owner = "0x156419fc32aB83B78421d3881397c2167A5FA552";
     const gamechangerBuyerAddress = "0xb0715271307d9749e7e12ce3ec66091f033f3240";
     const wingsWallet = "0x57f856B7314A73478FC01fbc76B92D4F2c2579bf";
-    const gasAmount = 4000000;
+    const gasAmount = 1501445;
 
     function form18DecimalsTo1(source) {
         return source.dividedBy(new BigNumber(10).pow(18)).toNumber();
