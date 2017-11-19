@@ -136,8 +136,7 @@ contract VLBCrowdsale is Ownable, Pausable {
         bool withinPeriod = now >= startTime && now <= endTime;
         bool withinCap = weiRaised.add(_value) <= cap;
         // For presale we want to decline all payments less then minPresaleAmount
-        bool withinAmount =
-            now >= startTime + 5 days || msg.value >= minPresaleAmount;
+        bool withinAmount = now >= startTime + 5 days || msg.value >= minPresaleAmount;
 
         return nonZeroPurchase && withinPeriod && withinCap && withinAmount;
     }

@@ -55,6 +55,11 @@ contract VLBToken is StandardToken, Ownable {
     address public crowdsaleContractAddress;
 
     /**
+     * @dev variable that holds flag of ended tokensake 
+     */
+    bool isFinished = false;
+
+    /**
      * @dev Modifier that allow only the Crowdsale contract to be sender
      */
     modifier onlyCrowdsaleContract() {
@@ -117,6 +122,7 @@ contract VLBToken is StandardToken, Ownable {
      */
     function endTokensale(address _wingsWallet) onlyCrowdsaleContract external {
         require(_wingsWallet != address(0));
+        require(!isFinished);
         uint256 crowdsaleLeftovers = balanceOf(crowdsaleTokensWallet);
         
         if (crowdsaleLeftovers > 0) {
@@ -131,6 +137,8 @@ contract VLBToken is StandardToken, Ownable {
         }
         
         balances[_wingsWallet] = balanceOf(_wingsWallet).add(wingsTokensReward);
+
+        isFinished = true;
 
         Live(totalSupply);
     }
