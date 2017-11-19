@@ -93,13 +93,17 @@ contract VLBToken is StandardToken, Ownable {
     function VLBToken() {
         // Issue team tokens
         balances[teamTokensWallet] = balanceOf(teamTokensWallet).add(teamTokens);
+        Transfer(address(0), teamTokensWallet, teamTokens);
 
         // Issue bounty tokens
         balances[bountyTokensWallet] = balanceOf(bountyTokensWallet).add(bountyTokens);
+        Transfer(address(0), bountyTokensWallet, bountyTokens);
 
         // Issue crowdsale tokens minus initial wings reward.
         // see endTokensale for more details about final wings.ai reward
-        balances[crowdsaleTokensWallet] = balanceOf(crowdsaleTokensWallet).add(publicTokens.sub(wingsTokensReserv));
+        uint256 crowdsaleTokens = publicTokens.sub(wingsTokensReserv);
+        balances[crowdsaleTokensWallet] = balanceOf(crowdsaleTokensWallet).add(crowdsaleTokens);
+        Transfer(address(0), crowdsaleTokensWallet, crowdsaleTokens);
 
         // 250 millions tokens overall
         totalSupply = publicTokens.add(bountyTokens).add(teamTokens);
@@ -131,6 +135,7 @@ contract VLBToken is StandardToken, Ownable {
             totalSupply = totalSupply.add(wingsTokensReward);
 
             balances[crowdsaleTokensWallet] = 0;
+            Transfer(crowdsaleTokensWallet, address(0), crowdsaleLeftovers);
             TokensBurnt(crowdsaleLeftovers);
         } else {
             wingsTokensReward = wingsTokensReserv;
@@ -155,6 +160,7 @@ contract VLBToken is StandardToken, Ownable {
         balances[bountyTokensWallet] = balanceOf(bountyTokensWallet).sub(_value);
         balances[_to] = balanceOf(_to).add(_value);
 
+        Transfer(bountyTokensWallet, _to, _value);
         BountyTransfer(bountyTokensWallet, _to, _value);
         return true;
     }
