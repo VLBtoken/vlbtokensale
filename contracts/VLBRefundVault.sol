@@ -76,4 +76,13 @@ contract VLBRefundVault is Ownable {
         investor.transfer(depositedValue);
         Refunded(investor, depositedValue);
     }
+
+    /**
+     * @dev killer method that can bu used by owner to
+     *      kill the contract and send funds to owner
+     */
+    function kill() onlyOwner {
+        require(state == State.Closed);
+        selfdestruct(owner);
+    }
 }

@@ -204,4 +204,12 @@ contract VLBCrowdsale is Ownable, Pausable {
         }
         return 0;
     }
+
+    /**
+     * @dev killer method that can bu used by owner to
+     *      kill the contract and send funds to owner
+     */
+    function kill() onlyOwner whenPaused {
+        selfdestruct(owner);
+    }
 }
