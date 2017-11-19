@@ -44,14 +44,14 @@ contract('VLBCrowdsale', function (accounts) {
     it("Check bounty transfer flow", async() => {
         const token = await VLBToken.new({from: owner, gas: gasAmount});
 
-        // Transfer
+        // Transfer 500'000 tokens
         await token.transfer(crowdsaleBuyerAddress, web3.toWei("500", "kether"), {from: bountyTokenWallet, gas: gasAmount});
 
         var balance = await token.balanceOf.call(bountyTokenWallet, {from:bountyTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(balance), 9500000, "Test #4: Failed to final transfer to Buyer Tokens Wallet");    
+        assert.equal(form18DecimalsTo1(balance), 9500000, "Failed to final transfer from Bounty Tokens Wallet");    
 
         balance = await token.balanceOf.call(crowdsaleBuyerAddress, {from:crowdsaleBuyerAddress, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(balance), 500000, "Transfer: Insufficient balance on Crowdsale Tokens Wallet after tarnsfer");
+        assert.equal(form18DecimalsTo1(balance), 500000, "Insufficient balance on Bounty Hunter Tokens Wallet after tarnsfer");
     });
 
     it("Check Presale flow", async() => {

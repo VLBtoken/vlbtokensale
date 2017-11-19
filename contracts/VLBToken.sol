@@ -47,6 +47,12 @@ contract VLBToken is StandardToken, Ownable {
     address public constant teamTokensWallet = 0xb49fbbd01D8fF9a2bF46B7E4cB31CF8b8CFB96A9;
     address public constant bountyTokensWallet = 0xfA81DD8Ed3610F2c872bD0a2b7dEd913dDDC1A47;
     address public constant crowdsaleTokensWallet = 0x4A4A67ddbFbC5A6bbFFe07613fa0599b76f1CC21;
+    
+    /**
+     * @dev wings.ai wallet for reward collecting
+     */
+    address public constant wingsWallet = 0x57f856B7314A73478FC01fbc76B92D4F2c2579bf;
+
 
     /**
      * @dev Address of Crowdsale contract which will be compared
@@ -116,16 +122,19 @@ contract VLBToken is StandardToken, Ownable {
     function setCrowdsaleAddress(address _crowdsaleAddress) onlyOwner external {
         require(_crowdsaleAddress != address(0));
         crowdsaleContractAddress = _crowdsaleAddress;
+
+        // Allow crowdsale contract 
+        uint256 balance = balanceOf(crowdsaleTokensWallet);
+        allowed[crowdsaleTokensWallet][crowdsaleContractAddress] = balance;
+        Approval(crowdsaleTokensWallet, crowdsaleContractAddress, balance);
     }
 
     /**
      * @dev called only by linked VLBCrowdsale contract to end crowdsale.
      *      all the unsold tokens will be burned and totalSupply updated
      *      but wings.ai reward will be secured in advance
-     * @param _wingsWallet address of wings.ai wallet for token reward collection
      */
-    function endTokensale(address _wingsWallet) onlyCrowdsaleContract external {
-        require(_wingsWallet != address(0));
+    function endTokensale() onlyCrowdsaleContract external {
         require(!isFinished);
         uint256 crowdsaleLeftovers = balanceOf(crowdsaleTokensWallet);
         
@@ -141,44 +150,10 @@ contract VLBToken is StandardToken, Ownable {
             wingsTokensReward = wingsTokensReserv;
         }
         
-        balances[_wingsWallet] = balanceOf(_wingsWallet).add(wingsTokensReward);
+        balances[wingsWallet] = balanceOf(wingsWallet).add(wingsTokensReward);
 
         isFinished = true;
 
         Live(totalSupply);
-    }
-
-    /**
-     * @dev manually transfer tokens from tokensale bounty wallet to hunter who earned it
-     * @param _to bounty hunter wallet
-     * @param _value amount of tokens
-     */
-    function transferFromBountyWallet(address _to, uint256 _value) onlyOwner external returns (bool) {
-        require(_to != address(0));
-        require(balanceOf(bountyTokensWallet) >= _value);
-
-        balances[bountyTokensWallet] = balanceOf(bountyTokensWallet).sub(_value);
-        balances[_to] = balanceOf(_to).add(_value);
-
-        Transfer(bountyTokensWallet, _to, _value);
-        BountyTransfer(bountyTokensWallet, _to, _value);
-        return true;
-    }
-
-    /**
-     * @dev transfer tokens from tokensale wallet to buyer wallet.
-     *       Called only from linked VLBCrowdsale contract
-     * @param _to buyer wallet
-     * @param _value amount of tokens
-     */
-    function transferFromCrowdsale(address _to, uint256 _value) onlyCrowdsaleContract external returns (bool) {
-        require(_to != address(0));
-        require(balanceOf(crowdsaleTokensWallet) >= _value);
-
-        balances[crowdsaleTokensWallet] = balanceOf(crowdsaleTokensWallet).sub(_value);
-        balances[_to] = balanceOf(_to).add(_value);
-
-        Transfer(crowdsaleTokensWallet, _to, _value);
-        return true;
     }
 }
