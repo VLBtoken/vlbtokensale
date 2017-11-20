@@ -1,5 +1,4 @@
 // Crowdasle deps
-var VLBProxy = artifacts.require("./VLBProxy.sol");
 var VLBToken = artifacts.require("./VLBToken.sol");
 var VLBCrowdsale = artifacts.require("./VLBCrowdsale.sol");
 var VLBRefundVault = artifacts.require("./VLBRefundVault.sol");
@@ -27,10 +26,6 @@ module.exports = function(deployer) {
                 });
         }).catch(function (e) {
             console.log(e);
-        });
-    }).then(function(){
-        return deployer.deploy(VLBProxy, VLBCrowdsale.address).catch(function(e) {
-                console.log(e);
         });
     }).catch(function(e) {
         console.error(e);
