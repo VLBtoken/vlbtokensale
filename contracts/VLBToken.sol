@@ -151,6 +151,7 @@ contract VLBToken is StandardToken, Ownable {
         }
         
         balances[wingsWallet] = balanceOf(wingsWallet).add(wingsTokensReward);
+        Transfer(crowdsaleTokensWallet, wingsWallet, wingsTokensReward);
 
         isFinished = true;
 
