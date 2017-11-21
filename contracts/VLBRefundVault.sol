@@ -25,8 +25,7 @@ contract VLBRefundVault is Ownable {
 
     mapping (address => uint256) public deposited;
 
-    // TODO: TestRPC addresses, replace to real
-    address public constant wallet = 0x6aEeE7E0088C067641f8E5a8B83003a7040C65e5;
+    address public constant wallet = 0x02D408bc203921646ECA69b555524DF3c7f3a8d7;
 
     address crowdsaleContractAddress;
 

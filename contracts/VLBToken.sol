@@ -44,14 +44,14 @@ contract VLBToken is StandardToken, Ownable {
     uint256 public wingsTokensReward = 0;
 
     // TODO: TestRPC addresses, replace to real
-    address public constant teamTokensWallet = 0xb49fbbd01D8fF9a2bF46B7E4cB31CF8b8CFB96A9;
-    address public constant bountyTokensWallet = 0xfA81DD8Ed3610F2c872bD0a2b7dEd913dDDC1A47;
-    address public constant crowdsaleTokensWallet = 0x4A4A67ddbFbC5A6bbFFe07613fa0599b76f1CC21;
+    address public constant teamTokensWallet = 0x6a6AcA744caDB8C56aEC51A8ce86EFCaD59989CF;
+    address public constant bountyTokensWallet = 0x91A7DE4ce8e8da6889d790B7911246B71B4c82ca;
+    address public constant crowdsaleTokensWallet = 0x5e671ceD703f3dDcE79B13F82Eb73F25bad9340e;
     
     /**
      * @dev wings.ai wallet for reward collecting
      */
-    address public constant wingsWallet = 0x57f856B7314A73478FC01fbc76B92D4F2c2579bf;
+    address public constant wingsWallet = 0xcbF567D39A737653C569A8B7dFAb617E327a7aBD;
 
 
     /**
