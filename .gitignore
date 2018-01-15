@@ -1,3 +1,5 @@
+.DS_Store
 .idea/
+tools/bonuses
 node_modules
 build

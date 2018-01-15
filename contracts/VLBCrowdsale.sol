@@ -1,23 +1,31 @@
-pragma solidity ^0.4.15;
+pragma solidity ^0.4.18;
 
-
-import "./lib/math/SafeMath.sol";
-import "./lib/ownership/Ownable.sol";
-import "./lib/lifecycle/Pausable.sol";
-import "./VLBToken.sol";
+import "./lib/SafeMath.sol";
+import "./lib/Ownable.sol";
 import "./VLBRefundVault.sol";
+import "./VLBBonusStore.sol";
+
+interface Token {
+    function transferFrom(address from, address to, uint256 value) public returns (bool);
+    function tokensWallet() public returns (address);
+}
 
 /**
  * @title VLBCrowdsale
  * @dev VLB crowdsale contract borrows Zeppelin Finalized, Capped and Refundable crowdsales implementations
  */
-contract VLBCrowdsale is Ownable, Pausable {
+contract VLBCrowdsale is Ownable {
     using SafeMath for uint;
+
+    /**
+     * @dev escrow address
+     */
+    address public escrow;
 
     /**
      * @dev token contract
      */
-    VLBToken public token;
+    Token public token;
 
     /**
      * @dev refund vault used to hold funds while crowdsale is running
@@ -25,27 +33,30 @@ contract VLBCrowdsale is Ownable, Pausable {
     VLBRefundVault public vault;
 
     /**
-     * @dev tokensale(presale) start time: Nov 22, 2017, 12:00:00 UTC (1511352000)
+     * @dev refund vault used to hold funds while crowdsale is running
      */
-    uint startTime = 1511352000;
+    VLBBonusStore public bonuses;
 
     /**
-     * @dev tokensale end time: Dec 17, 2017 12:00:00 UTC (1513512000), or the date when
-     *       300’000 ether have been collected, whichever occurs first. see hasEnded()
-     *       for more details
+     * @dev tokensale start time: Dec 17, 2017 12:00:00 UTC (1513512000)
      */
-    uint endTime = 1513512000;
+    uint startTime = 1513512000;
+
+    /**
+     * @dev tokensale end time: Apr 09, 2018 12:00:00 UTC (1523275200)
+     */
+    uint endTime = 1523275200;
 
     /**
      * @dev minimum purchase amount for presale
      */
-    uint256 public constant minPresaleAmount = 100 * 10**18; // 100 ether
+    uint256 public constant MIN_SALE_AMOUNT = 5 * 10**17; // 0.5 ether
 
     /**
-     * @dev minimum and maximum amount of funds to be raised in weis
+     * @dev minimum and maximum amount of funds to be raised in USD
      */
-    uint256 public constant goal = 25 * 10**21;  // 25 Kether
-    uint256 public constant cap  = 300 * 10**21; // 300 Kether
+    uint256 public constant USD_GOAL = 4 * 10**6;  // $4M
+    uint256 public constant USD_CAP  = 12 * 10**6; // $12M
 
     /**
      * @dev amount of raised money in wei
@@ -58,6 +69,26 @@ contract VLBCrowdsale is Ownable, Pausable {
     bool public isFinalized = false;
 
     /**
+     * @dev tokensale pause flag
+     */
+    bool public paused = false;
+
+    /**
+     * @dev refunding satge flag
+     */
+    bool public refunding = false;
+
+    /**
+     * @dev min cap reach flag
+     */
+    bool public isMinCapReached = false;
+
+    /**
+     * @dev ETH x USD exchange rate
+     */
+    uint public ETHUSD;
+
+    /**
      * @dev event for token purchase logging
      * @param purchaser who paid for the tokens
      * @param beneficiary who got the tokens
@@ -68,28 +99,69 @@ contract VLBCrowdsale is Ownable, Pausable {
 
     /**
      * @dev event for tokensale final logging
-     */
+    */
     event Finalized();
+
+    /**
+     * @dev event for tokensale pause logging
+    */    
+    event Pause();
+
+    /**
+     * @dev event for tokensale uppause logging
+    */    
+    event Unpause();
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is not paused.
+     */
+    modifier whenNotPaused() {
+        require(!paused);
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is paused.
+     */
+    modifier whenPaused() {
+        require(paused);
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when its called by escrow.
+     */
+    modifier onlyEscrow() {
+        require(msg.sender == escrow);
+        _;
+    }
 
     /**
      * @dev Crowdsale in the constructor takes addresses of
      *      the just deployed VLBToken and VLBRefundVault contracts
      * @param _tokenAddress address of the VLBToken deployed contract
-     * @param _vaultAddress address of the VLBRefundVault deployed contract
      */
-    function VLBCrowdsale(address _tokenAddress, address _vaultAddress) {
+    function VLBCrowdsale(address _tokenAddress, address _wallet, address _escrow, uint rate) public {
         require(_tokenAddress != address(0));
-        require(_vaultAddress != address(0));
+        require(_wallet != address(0));
+        require(_escrow != address(0));
 
-        // VLBToken and VLBRefundVault was deployed separately
-        token = VLBToken(_tokenAddress);
-        vault = VLBRefundVault(_vaultAddress);
+        escrow = _escrow;
+
+        // Set initial exchange rate
+        ETHUSD = rate;
+
+        // VLBTokenwas deployed separately
+        token = Token(_tokenAddress);
+
+        vault = new VLBRefundVault(_wallet);
+        bonuses = new VLBBonusStore();
     }
 
     /**
      * @dev fallback function can be used to buy tokens
      */
-    function() payable {
+    function() public payable {
         buyTokens(msg.sender);
     }
 
@@ -106,12 +178,17 @@ contract VLBCrowdsale is Ownable, Pausable {
         // buyer and beneficiary could be two different wallets
         address buyer = msg.sender;
 
+        weiRaised = weiRaised.add(weiAmount);
+
         // calculate token amount to be created
         uint256 tokens = weiAmount.mul(getConversionRate());
 
-        weiRaised = weiRaised.add(weiAmount);
+        uint8 rate = bonuses.collectRate(beneficiary);
+        if (rate != 0) {
+            tokens = tokens.mul(rate).div(100);
+        }
 
-        if (!token.transferFrom(token.crowdsaleTokensWallet(), beneficiary, tokens)) {
+        if (!token.transferFrom(token.tokensWallet(), beneficiary, tokens)) {
             revert();
         }
 
@@ -128,31 +205,34 @@ contract VLBCrowdsale is Ownable, Pausable {
     function validPurchase(uint256 _value) internal constant returns (bool) {
         bool nonZeroPurchase = _value != 0;
         bool withinPeriod = now >= startTime && now <= endTime;
-        bool withinCap = weiRaised.add(_value) <= cap;
+        bool withinCap = !capReached(weiRaised.add(_value));
+
         // For presale we want to decline all payments less then minPresaleAmount
-        bool withinAmount = now >= startTime + 5 days || msg.value >= minPresaleAmount;
+        bool withinAmount = msg.value >= MIN_SALE_AMOUNT;
 
         return nonZeroPurchase && withinPeriod && withinCap && withinAmount;
     }
 
     /**
+     * @dev finish presale stage and move vault to
+     *      refund state if GOAL was not reached
+     */
+    function unholdFunds() onlyOwner public {
+        if (goalReached()) {
+            isMinCapReached = true;
+            vault.unhold();
+        } else {
+            revert();
+        }
+    }
+    
+    /**
      * @dev check if crowdsale still active based on current time and cap
      * @return true if crowdsale event has ended
      */
     function hasEnded() public constant returns (bool) {
-        bool capReached = weiRaised >= cap;
         bool timeIsUp = now > endTime;
-        return timeIsUp || capReached;
-    }
-
-    /**
-     * @dev if crowdsale is unsuccessful, investors can claim refunds here
-     */
-    function claimRefund() public {
-        require(isFinalized);
-        require(!goalReached());
-
-        vault.refund(msg.sender);
+        return timeIsUp || capReached();
     }
 
     /**
@@ -162,45 +242,92 @@ contract VLBCrowdsale is Ownable, Pausable {
         require(!isFinalized);
         require(hasEnded());
 
-        // trigger vault and token finalization
         if (goalReached()) {
-            vault.close(token.wingsWallet());
+            vault.close();
         } else {
+            refunding = true;
             vault.enableRefunds();
         }
 
-        token.endTokensale();
         isFinalized = true;
-
         Finalized();
     }
 
     /**
-     * @dev check if hard cap goal is reached
+     * @dev add previous investor compensaton rate
      */
-    function goalReached() public constant returns (bool) {
-        return weiRaised >= goal;
+    function addRate(address investor, uint8 rate) onlyOwner public {
+        require(investor != address(0));
+        bonuses.addRate(investor, rate);
     }
+
+    /**
+     * @dev check if soft cap goal is reached in USD
+     */
+    function goalReached() public view returns (bool) {        
+        return isMinCapReached || weiRaised.mul(ETHUSD).div(10**20) >= USD_GOAL;
+    }
+
+    /**
+     * @dev check if hard cap goal is reached in USD
+     */
+    function capReached() internal view returns (bool) {
+        return weiRaised.mul(ETHUSD).div(10**20) >= USD_CAP;
+    }
+
+    /**
+     * @dev check if hard cap goal is reached in USD
+     */
+    function capReached(uint256 raised) internal view returns (bool) {
+        return raised.mul(ETHUSD).div(10**20) >= USD_CAP;
+    }
+
+    /**
+     * @dev if crowdsale is unsuccessful, investors can claim refunds here
+     */
+    function claimRefund() public {
+        require(isFinalized && refunding);
+
+        vault.refund(msg.sender);
+    }    
+
+    /**
+     * @dev called by the owner to pause, triggers stopped state
+     */
+    function pause() onlyOwner whenNotPaused public {
+        paused = true;
+        Pause();
+    }
+
+    /**
+     * @dev called by the owner to unpause, returns to normal state
+     */
+    function unpause() onlyOwner whenPaused public {
+        paused = false;
+        Unpause();
+    }
+    
+    /**
+     * @dev called by the escrow to update current ETH x USD exchange rate
+     */
+    function updateExchangeRate(uint rate) onlyEscrow public {
+        ETHUSD = rate;
+    } 
 
     /**
      * @dev returns current token price based on current presale time frame
      */
     function getConversionRate() public constant returns (uint256) {
-        if (now >= startTime + 20 days) {
+        if (now >= startTime + 106 days) {
             return 650;
-            // 650        Crowdasle Part 4
-        } else if (now >= startTime + 15 days) {
+        } else if (now >= startTime + 99 days) {
+            return 676;
+        } else if (now >= startTime + 92 days) {
             return 715;
-            // 650 + 10%. Crowdasle Part 3
-        } else if (now >= startTime + 10 days) {
+        } else if (now >= startTime + 85 days) {
             return 780;
-            // 650 + 20%. Crowdasle Part 2
-        } else if (now >= startTime + 5 days) {
-            return 845;
-            // 650 + 30%. Crowdasle Part 1
         } else if (now >= startTime) {
-            return 910;
-            // 650 + 40%. Presale
+            return 845;
         }
         return 0;
     }
@@ -209,7 +336,7 @@ contract VLBCrowdsale is Ownable, Pausable {
      * @dev killer method that can bu used by owner to
      *      kill the contract and send funds to owner
      */
-    function kill() onlyOwner whenPaused {
+    function kill() onlyOwner whenPaused public {
         selfdestruct(owner);
     }
 }

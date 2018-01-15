@@ -1,211 +1,398 @@
+/* jshint ignore: start */
+
 var VLBToken = artifacts.require("./VLBToken.sol");
 var VLBCrowdsale = artifacts.require("./VLBCrowdsale.sol");
-var VLBRefundVault = artifacts.require("./VLBRefundVault.sol");
 var BigNumber = require("bignumber.js");
+var env = require("../env.js");
 
 contract('VLBCrowdsale', function (accounts) {
-    const wallet = "0x6aEeE7E0088C067641f8E5a8B83003a7040C65e5";
-    const teamWallet = "0xb49fbbd01D8fF9a2bF46B7E4cB31CF8b8CFB96A9";
-    const bountyTokenWallet = "0xfA81DD8Ed3610F2c872bD0a2b7dEd913dDDC1A47";
-    const crowdsaleTokenWallet = "0x4A4A67ddbFbC5A6bbFFe07613fa0599b76f1CC21";
-    const presaleBuyerAddress = "0x6AB20252Cc8fe103949ef6500C8e27f5c194375C";
-    const crowdsaleBuyerAddress = "0x9dD1c94058c51E1A24c4598B1071fDcaf908205F";
-    const owner = "0x156419fc32aB83B78421d3881397c2167A5FA552";
-    const gamechangerBuyerAddress = "0xb0715271307d9749e7e12ce3ec66091f033f3240";
-    const wingsWallet = "0x57f856B7314A73478FC01fbc76B92D4F2c2579bf";
-    const gasAmount = 1500000;
 
     function form18DecimalsTo1(source) {
         return source.dividedBy(new BigNumber(10).pow(18)).toNumber();
     }
 
-    // Move forward for 5 days (432000 sec)
-    function quantumLeap() {
-        web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [432000], id: 0});
+    // Move forward
+    function quantumLeap(days) {
+        web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [86400 * days], id: 0});
     }
 
     it("Check initial balances", async() => {
-        const token = await VLBToken.new({from: owner, gas: gasAmount});
+        const token = await VLBToken.new(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.tests.accounts.owner, gas: env.network.gasAmount});
 
-        const teamBalance = await token.balanceOf.call(teamWallet, {from: teamWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(teamBalance), 20000000, "Test #1: Insufficient balance on Team Tokens Wallet");
+        const crowdsaleBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
 
-        const bountyBalance = await token.balanceOf.call(bountyTokenWallet, {from: bountyTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(bountyBalance), 10000000, "Test #1: Insufficient balance on Bounty Tokens Wallet");
-
-        const crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(crowdsaleBalance), 217500000, "Test #1: Insufficient balance on Crowdsale Tokens Wallet");
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 175000000, "Wrong balance on tokens wallet");
         
         // Check total supply
-        const totalSupply = await token.totalSupply.call({from: owner, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(totalSupply), 250000000, "Insufficient totalSupply amount");
+        const totalSupply = await token.totalSupply.call({from: env.tests.accounts.owner, gas: env.network.gasAmount});
+        assert.equal(form18DecimalsTo1(totalSupply), 175000000, "Wrong totalSupply amount");
     });
 
-    it("Check bounty transfer flow", async() => {
-        const token = await VLBToken.new({from: owner, gas: gasAmount});
+    it("Check burn tokens", async() => {
+        const token = await VLBToken.new(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.tests.accounts.owner, gas: env.network.gasAmount});
+
+        var crowdsaleBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 175000000, "Wrong balance on tokens wallet before burn");
+
+        await token.burn(web3.toWei("5", "mether"), {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
+        
+        crowdsaleBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 170000000, "Wrong balance on tokens wallet after burn");
+    });
+
+    it("Check transfer tokens", async() => {
+        const token = await VLBToken.new(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.tests.accounts.owner, gas: env.network.gasAmount});
 
         // Transfer 500'000 tokens
-        await token.transfer(crowdsaleBuyerAddress, web3.toWei("500", "kether"), {from: bountyTokenWallet, gas: gasAmount});
+        await token.transfer(
+            env.tests.accounts.privateBuyerAddress, 
+            web3.toWei("500", "kether"), 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
 
-        var balance = await token.balanceOf.call(bountyTokenWallet, {from:bountyTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(balance), 9500000, "Failed to final transfer from Bounty Tokens Wallet");    
+        var balance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from:env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
 
-        balance = await token.balanceOf.call(crowdsaleBuyerAddress, {from:crowdsaleBuyerAddress, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(balance), 500000, "Insufficient balance on Bounty Hunter Tokens Wallet after tarnsfer");
+        assert.equal(form18DecimalsTo1(balance), 174500000, "Failed to transfer tokens from tokens wallet to beneficiary");    
+
+        balance = await token.balanceOf.call(
+            env.tests.accounts.privateBuyerAddress, 
+            {from: env.tests.accounts.privateBuyerAddress, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(balance), 500000, "Wrong balance beneficiary wallet after tarnsfer");
     });
 
-    it("Check Presale flow", async() => {
-        const token = await VLBToken.new({from: owner, gas: gasAmount});
-        const vault = await VLBRefundVault.new({from: owner, gas: gasAmount});
+    it("Check presale flow", async() => {
+        const token = await VLBToken.new(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.tests.accounts.owner, gas: env.network.gasAmount});
 
         const tokensale = await VLBCrowdsale.new(
             token.address,
-            vault.address,
-            {from: owner, gas: gasAmount});
+            env.crowdsale.accounts.wallet,
+            env.crowdsale.accounts.escrow,
+            env.crowdsale.ETHUSD,
+            {from: env.tests.accounts.owner, gas: env.network.gasAmount});
 
-        token.setCrowdsaleAddress(tokensale.address, {from: owner, gas: gasAmount});
-        vault.setCrowdsaleAddress(tokensale.address, {from: owner, gas: gasAmount});
+        await token.approve(
+            tokensale.address, 
+            env.crowdsale.allowance(web3), 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
+
+        await tokensale.addRate(
+            env.tests.accounts.returningPresaleBuyerAddress, 
+            120, 
+            {from: env.tests.accounts.owner, gas: env.network.gasAmount});
 
         await tokensale.buyTokens(
-            presaleBuyerAddress,
-            {from: presaleBuyerAddress, value: web3.toWei("100", "ether"), gasLimit: gasAmount});
+            env.tests.accounts.returningPresaleBuyerAddress,
+            {from: env.tests.accounts.returningPresaleBuyerAddress, value: web3.toWei("500", "finney"), gasLimit: env.network.gasAmount});
 
-        // Buy tokens by 910 price
-        const tokenBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(tokenBalance), 217409000, "Test #2: Failed to transfer from Presale Tokens Wallet");
+        var tokenBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
 
-        // Buyer balance needs to be 910 * 300
-        const buyerTokenBalance = await token.balanceOf.call(presaleBuyerAddress, {from: presaleBuyerAddress, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(buyerTokenBalance), 91000, "Test #2: Failed to transfer to Buyer Tokens Wallet");
+        assert.equal(form18DecimalsTo1(tokenBalance), 174999493, "Failed to sell tokens to returning buyer, wrong balance on tokens wallet");
+
+        var buyerTokenBalance = await token.balanceOf.call(
+            env.tests.accounts.returningPresaleBuyerAddress, 
+            {from: env.tests.accounts.returningPresaleBuyerAddress, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(buyerTokenBalance), 507, "Failed to buy tokens, wrong balance on returning buyer wallet");
+
+        await tokensale.buyTokens(
+            env.tests.accounts.returningPresaleBuyerAddress,
+            {from: env.tests.accounts.returningPresaleBuyerAddress, value: web3.toWei("10", "ether"), gasLimit: env.network.gasAmount});
+
+        tokenBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(tokenBalance), 174991043, "Failed to second sell tokens to returning buyer, wrong balance on tokens wallet");
+
+        buyerTokenBalance = await token.balanceOf.call(
+            env.tests.accounts.returningPresaleBuyerAddress, 
+            {from: env.tests.accounts.returningPresaleBuyerAddress, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(buyerTokenBalance), 8957, "Failed to buy tokens, wrong balance on presale buyer wallet");
+
+        await tokensale.buyTokens(
+            env.tests.accounts.privateBuyerAddress,
+            {from: env.tests.accounts.privateBuyerAddress, value: web3.toWei("100", "ether"), gasLimit: env.network.gasAmount});
+
+        tokenBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(tokenBalance), 174906543, "Failed to sell tokens to preslae buyer, wrong balance on tokens wallet");
+
+        buyerTokenBalance = await token.balanceOf.call(
+            env.tests.accounts.privateBuyerAddress, 
+            {from: env.tests.accounts.privateBuyerAddress, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(buyerTokenBalance), 84500, "Failed to buy tokens, wrong balance on presale buyer wallet");
     });
 
-    it("Check Crowdsale flow", async() => {
-        const token = await VLBToken.new({from: owner, gas: gasAmount});
-        const vault = await VLBRefundVault.new({from: owner, gas: gasAmount});
-
+    it("Check min cap flow", async() => {
+        const token = await VLBToken.new(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.tests.accounts.owner, gas: env.network.gasAmount});
+        
         const tokensale = await VLBCrowdsale.new(
             token.address,
-            vault.address,
-            {from: owner, gas: gasAmount});
+            env.crowdsale.accounts.wallet,
+            env.crowdsale.accounts.escrow,
+            env.crowdsale.ETHUSD,
+            {from: env.tests.accounts.owner, gas: env.network.gasAmount});
 
-        token.setCrowdsaleAddress(tokensale.address, {from: owner, gas: gasAmount});
-        vault.setCrowdsaleAddress(tokensale.address, {from: owner, gas: gasAmount});
+        await token.approve(
+            tokensale.address, 
+            env.crowdsale.allowance(web3), 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
 
-        var crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(crowdsaleBalance), 217500000, "Test #3: Insufficient balance on Crowdsale Tokens Wallet");
+        await tokensale.buyTokens(
+            env.tests.accounts.gamechangerBuyerAddress,
+            {from: env.tests.accounts.gamechangerBuyerAddress, value: web3.toWei("9", "kether"), gasLimit: env.network.gasAmount}); 
 
-        var buyerBalance = await token.balanceOf.call(crowdsaleBuyerAddress, {from: crowdsaleBuyerAddress, gas: gasAmount});
-        assert.equal(buyerBalance, 0, "Test #3: Failed to transfer to Buyer Tokens Wallet");
+        var buyerBalance = await token.balanceOf.call(
+            env.tests.accounts.gamechangerBuyerAddress, 
+            {from: env.tests.accounts.gamechangerBuyerAddress, gas: env.network.gasAmount});
+            
+        assert.equal(form18DecimalsTo1(buyerBalance), 7605000, "Failed to buy tokens, wrong balance on buyer wallet");
+    
+        var crowdsaleBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 167395000, "Failed to sell tokens, wrong balance on crowdsale wallet");
+
+        await tokensale.updateExchangeRate(2000, {from: env.crowdsale.accounts.escrow, gasLimit: env.network.gasAmount});
+        
+        var isThrowed = false;
+        try {
+            await tokensale.unholdFunds({from: env.tests.accounts.owner, gas: env.network.gasAmount});
+        } catch (e) {
+            isThrowed = true;
+        }
+
+        assert.equal(isThrowed, true, "Should throw since ETH x USD is too low")
+
+        await tokensale.updateExchangeRate(env.crowdsale.ETHUSD, {from: env.crowdsale.accounts.escrow, gasLimit: env.network.gasAmount});
+        await tokensale.unholdFunds({from: env.tests.accounts.owner, gas: env.network.gasAmount});
+
+        var walletBalance = await web3.eth.getBalance(env.crowdsale.accounts.wallet);
+        assert.equal(form18DecimalsTo1(walletBalance), 9000, "Failed to unhold funds, wrong wallet collected amount");
+
+        await tokensale.buyTokens(
+            env.tests.accounts.gamechangerBuyerAddress,
+            {from: env.tests.accounts.gamechangerBuyerAddress, value: web3.toWei("1", "kether"), gasLimit: env.network.gasAmount});
+
+        buyerBalance = await token.balanceOf.call(
+            env.tests.accounts.gamechangerBuyerAddress, 
+            {from: env.tests.accounts.gamechangerBuyerAddress, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(buyerBalance), 8450000, "Failed to but tokens second time, wrong balance on buyer amount");
+    
+        crowdsaleBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 166550000, "Failed to sell tokens second time, wrong balance on crowdsale wallet");
+
+        await tokensale.updateExchangeRate(2000, {from: env.crowdsale.accounts.escrow, gasLimit: env.network.gasAmount});
+        
+        await tokensale.unholdFunds({from: env.tests.accounts.owner, gas: env.network.gasAmount});
+
+        walletBalance = await web3.eth.getBalance(env.crowdsale.accounts.wallet);
+        assert.equal(form18DecimalsTo1(walletBalance), 10000, "Failed to unhold funds second time, wrong wallet collected amount");
+
+        //await tokensale.updateExchangeRate(env.crowdsale.ETHUSD, {from: env.crowdsale.accounts.escrow, gasLimit: env.network.gasAmount});
+    });    
+
+    it("Check discount tiers flow", async() => {
+        const token = await VLBToken.new(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.tests.accounts.owner, gas: env.network.gasAmount});
+        
+        const tokensale = await VLBCrowdsale.new(
+            token.address,
+            env.crowdsale.accounts.wallet,
+            env.crowdsale.accounts.escrow,
+            env.crowdsale.ETHUSD,
+            {from: env.tests.accounts.owner, gas: env.network.gasAmount});
+
+        await token.approve(
+            tokensale.address, 
+            env.crowdsale.allowance(web3), 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
+        
+        var crowdsaleBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 175000000, "Wrong balance on crowdsale wallet");
+
+        var buyerBalance = await token.balanceOf.call(
+            env.tests.accounts.frequentBuyer, 
+            {from: env.tests.accounts.frequentBuyer, gas: env.network.gasAmount});
+
+        assert.equal(buyerBalance, 0, "Failed to check buyer initial ballance");
 
         // -> Tier #1 (845)
-        await quantumLeap();
+        await quantumLeap(50);
 
         await tokensale.buyTokens(
-            crowdsaleBuyerAddress,
-            {from: crowdsaleBuyerAddress, value: web3.toWei("20", "ether"), gasLimit: gasAmount});
+            env.tests.accounts.frequentBuyer,
+            {from: env.tests.accounts.frequentBuyer, value: web3.toWei("50", "ether"), gasLimit: env.network.gasAmount});
 
-        crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(crowdsaleBalance), 217483100, "Test #3: Insufficient tier #1 balance on Crowdsale Tokens Wallet");
+        crowdsaleBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
 
-        buyerBalance = await token.balanceOf.call(crowdsaleBuyerAddress, {from: crowdsaleBuyerAddress, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(buyerBalance), 16900, "Test #3: Failed to transfer tier #1 to Buyer Tokens Wallet");
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 174957750, "Failed to sell tier #1 tokens, wrong balance on crowdsale wallet");
+
+        buyerBalance = await token.balanceOf.call(
+            env.tests.accounts.frequentBuyer, 
+            {from: env.tests.accounts.frequentBuyer, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(buyerBalance), 42250, "Failed to buy tier #1 tokens, wrong ballance on buyer wallet");
 
         // -> Tier #2 (780)
-        await quantumLeap();
+        await quantumLeap(35);
 
         await tokensale.buyTokens(
-            crowdsaleBuyerAddress,
-            {from: crowdsaleBuyerAddress, value: web3.toWei("20", "ether"), gasLimit: gasAmount});
+            env.tests.accounts.frequentBuyer,
+            {from: env.tests.accounts.frequentBuyer, value: web3.toWei("50", "ether"), gasLimit: env.network.gasAmount});
 
-        crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(crowdsaleBalance), 217467500, "Test #3: Insufficient tier #2 balance on Crowdsale Tokens Wallet");
+        crowdsaleBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
+            
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 174918750, "Failed to sell tier #2 tokens, wrong balance on crowdsale wallet");
 
-        buyerBalance = await token.balanceOf.call(crowdsaleBuyerAddress, {from: crowdsaleBuyerAddress, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(buyerBalance), 32500, "Test #3: Failed to transfer tier #2 to Buyer Tokens Wallet");
+        buyerBalance = await token.balanceOf.call(
+            env.tests.accounts.frequentBuyer, 
+            {from: env.tests.accounts.frequentBuyer, gas: env.network.gasAmount});
+        assert.equal(form18DecimalsTo1(buyerBalance), 81250, "Failed to buy tier #2 tokens, wrong ballance on buyer wallet");
 
-        // -> Tier #3 (710)
-        await quantumLeap();
+        // -> Tier #3 (715)
+        await quantumLeap(7);
 
         await tokensale.buyTokens(
-            crowdsaleBuyerAddress,
-            {from: crowdsaleBuyerAddress, value: web3.toWei("20", "ether"), gasLimit: gasAmount});
+            env.tests.accounts.frequentBuyer,
+            {from: env.tests.accounts.frequentBuyer, value: web3.toWei("50", "ether"), gasLimit: env.network.gasAmount});
 
-        crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(crowdsaleBalance), 217453200, "Test #3: Insufficient tier #3 balance on Crowdsale Tokens Wallet");
+        crowdsaleBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
 
-        buyerBalance = await token.balanceOf.call(crowdsaleBuyerAddress, {from: crowdsaleBuyerAddress, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(buyerBalance), 46800, "Test #3: Failed to transfer tier #3 to Buyer Tokens Wallet");
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 174883000, "Failed to sell tier #3 tokens, wrong balance on crowdsale wallet");
+
+        buyerBalance = await token.balanceOf.call(env.tests.accounts.frequentBuyer, {from: env.tests.accounts.frequentBuyer, gas: env.network.gasAmount});
+        assert.equal(form18DecimalsTo1(buyerBalance), 117000, "Failed to buy tier #3 tokens, wrong ballance on buyer wallet");
 
         // -> Tier #4 (650)
-        await quantumLeap();
+        await quantumLeap(7);
 
         await tokensale.buyTokens(
-            crowdsaleBuyerAddress,
-            {from: crowdsaleBuyerAddress, value: web3.toWei("20", "ether"), gasLimit: gasAmount});
+            env.tests.accounts.frequentBuyer,
+            {from: env.tests.accounts.frequentBuyer, value: web3.toWei("50", "ether"), gasLimit: env.network.gasAmount});
 
-        crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(crowdsaleBalance), 217440200, "Test #3: Insufficient tier #4 balance on Crowdsale Tokens Wallet");
+        crowdsaleBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
 
-        buyerBalance = await token.balanceOf.call(crowdsaleBuyerAddress, {from: crowdsaleBuyerAddress, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(buyerBalance), 59800, "Test #3: Failed to transfer tier #4 to Buyer Tokens Wallet");
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 174850500, "Failed to sell tier #4 tokens, wrong balance on crowdsale wallet");
+
+        buyerBalance = await token.balanceOf.call(
+            env.tests.accounts.frequentBuyer, 
+            {from: env.tests.accounts.frequentBuyer, gas: env.network.gasAmount});
+        assert.equal(form18DecimalsTo1(buyerBalance), 149500, "Failed to buy tier #4 tokens, wrong ballance on buyer wallet");
+
+        // -> Tier #4 (500)
+        await quantumLeap(7);
+        
+        await tokensale.buyTokens(
+            env.tests.accounts.frequentBuyer,
+            {from: env.tests.accounts.frequentBuyer, value: web3.toWei("50", "ether"), gasLimit: env.network.gasAmount});
+
+        crowdsaleBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 174825500, "Failed to sell tier #5 tokens, wrong balance on crowdsale wallet");
+
+        buyerBalance = await token.balanceOf.call(
+            env.tests.accounts.frequentBuyer, 
+            {from: env.tests.accounts.frequentBuyer, gas: env.network.gasAmount});
+
+        assert.equal(form18DecimalsTo1(buyerBalance), 174500, "Failed to buy tier #5 tokens, wrong ballance on buyer wallet");
+                
     });
 
-    it("Check finalization flow", async() => {
-        const token = await VLBToken.new({from: owner, gas: gasAmount});
-        const vault = await VLBRefundVault.new({from: owner, gas: gasAmount});
-
+    it("Check refund flow", async() => {
+        const token = await VLBToken.new(env.crowdsale.accounts.crowdsaleTokenWallet, {from: env.tests.accounts.owner, gas: env.network.gasAmount});
+        
         const tokensale = await VLBCrowdsale.new(
             token.address,
-            vault.address,
-            {from: owner, gas: gasAmount});
+            env.tests.accounts.refundWallet,
+            env.crowdsale.accounts.escrow,
+            env.crowdsale.ETHUSD,
+           {from: env.tests.accounts.owner, gas: env.network.gasAmount});
 
-        vault.setCrowdsaleAddress(tokensale.address, {from: owner, gas: gasAmount});
-        token.setCrowdsaleAddress(tokensale.address, {from: owner, gas: gasAmount});
-
-        var crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(crowdsaleBalance), 217500000, "Test #4: Insufficient balance on Crowdsale Tokens Wallet");
-
-        var buyerBalance = await token.balanceOf.call(gamechangerBuyerAddress, {from: gamechangerBuyerAddress, gas: gasAmount});
-        assert.equal(buyerBalance, 0, "Test #3: Failed to transfer to Buyer Tokens Wallet");
+        await token.approve(
+            tokensale.address, 
+            env.crowdsale.allowance(web3), 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
 
         await tokensale.buyTokens(
-            gamechangerBuyerAddress,
-            {from: gamechangerBuyerAddress, value: web3.toWei("25", "kether"), gasLimit: gasAmount});
+            env.tests.accounts.gamechangerBuyerAddress,
+            {from: env.tests.accounts.gamechangerBuyerAddress, value: web3.toWei("5", "kether"), gasLimit: env.network.gasAmount});
 
-        crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(crowdsaleBalance), 201250000, "Test #4: Insufficient tier #4 balance on Crowdsale Tokens Wallet");
+        var buyerBalance = await token.balanceOf.call(
+            env.tests.accounts.gamechangerBuyerAddress, 
+            {from: env.tests.accounts.gamechangerBuyerAddress, gas: env.network.gasAmount});
 
-        buyerBalance = await token.balanceOf.call(gamechangerBuyerAddress, {from: gamechangerBuyerAddress, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(buyerBalance), 16250000, "Test #4: Failed to transfer tier #4 to Buyer Tokens Wallet");
+        assert.equal(form18DecimalsTo1(buyerBalance), 2500000, "Failed to buy tokens, wrong balance on buyer account");
+    
+        var crowdsaleBalance = await token.balanceOf.call(
+            env.crowdsale.accounts.crowdsaleTokenWallet, 
+            {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 172500000, "Failed to sell tokens, wrong balance on tokens wallet");
 
-        // -> Final
-        await quantumLeap();
+        await quantumLeap(7);
+        
+        await tokensale.finalize({from: env.tests.accounts.owner, gas: env.network.gasAmount});
 
-        await tokensale.finalize({from: owner, gas: gasAmount});
+        var balance = await web3.eth.getBalance(env.tests.accounts.refundWallet);
+        assert.equal(form18DecimalsTo1(balance), 0, "Failed to verify wallet collected amount after finalization");
 
-        await tokensale.pause({from: owner, gas: gasAmount});
-        await tokensale.kill({from: owner, gas: gasAmount});
+        balance = await web3.eth.getBalance(env.tests.accounts.gamechangerBuyerAddress);
+        assert.ok(form18DecimalsTo1(balance) > 10990 && form18DecimalsTo1(balance) < 11000, "Failed to verify buyer wallet balance");
 
-        await vault.kill({from: owner, gas: gasAmount});
+        await tokensale.claimRefund({from: env.tests.accounts.gamechangerBuyerAddress, gas: env.network.gasAmount});
 
-        crowdsaleBalance = await token.balanceOf.call(crowdsaleTokenWallet, {from: crowdsaleTokenWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(crowdsaleBalance), 0, "Test #4: Insufficient final balance on Crowdsale Tokens Wallet");
+        balance = await web3.eth.getBalance(env.tests.accounts.refundWallet);
+        assert.equal(form18DecimalsTo1(balance), 0, "Failed to verify refunder wallet collected amount");
 
-        buyerBalance = await token.balanceOf.call(gamechangerBuyerAddress, {from: gamechangerBuyerAddress, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(buyerBalance), 16250000, "Test #4: Failed to final transfer to Buyer Tokens Wallet");
-
-        const walletBalance = await web3.eth.getBalance(wallet);
-        assert.equal(form18DecimalsTo1(walletBalance), 24750, "Test #4: Failed to verify wallet collected amount");
-
-        // Check wings earnings
-        const wingsEthBalance = await web3.eth.getBalance(wingsWallet);
-        assert.equal(form18DecimalsTo1(wingsEthBalance), 250, "Test #4: Failed to verify wings.ai wallet collected amount");
-
-        buyerBalance = await token.balanceOf.call(wingsWallet, {from: wingsWallet, gas: gasAmount});
-        assert.equal(form18DecimalsTo1(buyerBalance), 462500, "Test #4: Failed to final transfer to wings.ai Tokens Wallet");
-
-        // Check total supply
-        const totalSupply = await token.totalSupply.call({from: owner, gas: gasAmount})
-        assert.equal(form18DecimalsTo1(totalSupply), 46712500, "Innsificient total supplay amount on tokensale end");
-    });
+        balance = await web3.eth.getBalance(env.tests.accounts.gamechangerBuyerAddress);
+        assert.ok(form18DecimalsTo1(balance) > 15900 && form18DecimalsTo1(balance) < 16000, "Failed to verify wallet collected amount");
+        
+     });
 });
+
+/* jshint ignore: end */

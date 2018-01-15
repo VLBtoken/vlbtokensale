@@ -1,15 +1,8 @@
-pragma solidity ^0.4.15;
+pragma solidity ^0.4.18;
 
 
-import './lib/math/SafeMath.sol';
-import './lib/ownership/Ownable.sol';
-
-/*
- * !!!IMPORTANT!!!
- * Based on Open Zeppelin Refund Vault contract
- * https://github.com/OpenZeppelin/zeppelin-solidity/blob/master/contracts/crowdsale/RefundVault.sol
- * the only thing that differs is a hardcoded wallet address
- */
+import "./lib/SafeMath.sol";
+import "./lib/Ownable.sol";
 
 /**
  * @title RefundVault.
@@ -25,44 +18,39 @@ contract VLBRefundVault is Ownable {
 
     mapping (address => uint256) public deposited;
 
-    address public constant wallet = 0x02D408bc203921646ECA69b555524DF3c7f3a8d7;
-
-    address crowdsaleContractAddress;
+    address public wallet;
 
     event Closed();
+    event FundsDrained(uint256 weiAmount);
     event RefundsEnabled();
     event Refunded(address indexed beneficiary, uint256 weiAmount);
 
-    function VLBRefundVault() {
+    function VLBRefundVault(address _wallet) public {
+        require(_wallet != address(0));
+        wallet = _wallet;
         state = State.Active;
     }
 
-    modifier onlyCrowdsaleContract() {
-        require(msg.sender == crowdsaleContractAddress);
-        _;
-    }
-
-    function setCrowdsaleAddress(address _crowdsaleAddress) external onlyOwner {
-        require(_crowdsaleAddress != address(0));
-        crowdsaleContractAddress = _crowdsaleAddress;
-    }
-
-    function deposit(address investor) onlyCrowdsaleContract external payable {
+    function deposit(address investor) onlyOwner public payable {
         require(state == State.Active);
         deposited[investor] = deposited[investor].add(msg.value);
     }
 
-    function close(address _wingsWallet) onlyCrowdsaleContract external {
-        require(_wingsWallet != address(0));
+    function unhold() onlyOwner public {
         require(state == State.Active);
-        state = State.Closed;
-        Closed();
-        uint256 wingsReward = this.balance.div(100);
-        _wingsWallet.transfer(wingsReward);
+        FundsDrained(this.balance);
         wallet.transfer(this.balance);
     }
 
-    function enableRefunds() onlyCrowdsaleContract external {
+    function close() onlyOwner public {
+        require(state == State.Active);
+        state = State.Closed;
+        Closed();
+        FundsDrained(this.balance);
+        wallet.transfer(this.balance);
+    }
+
+    function enableRefunds() onlyOwner public {
         require(state == State.Active);
         state = State.Refunding;
         RefundsEnabled();
@@ -74,14 +62,5 @@ contract VLBRefundVault is Ownable {
         deposited[investor] = 0;
         investor.transfer(depositedValue);
         Refunded(investor, depositedValue);
-    }
-
-    /**
-     * @dev killer method that can bu used by owner to
-     *      kill the contract and send funds to owner
-     */
-    function kill() onlyOwner {
-        require(state == State.Closed);
-        selfdestruct(owner);
     }
 }
