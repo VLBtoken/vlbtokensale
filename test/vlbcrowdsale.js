@@ -221,7 +221,7 @@ contract('VLBCrowdsale', function (accounts) {
         assert.equal(form18DecimalsTo1(walletBalance), 10000, "Failed to unhold funds second time, wrong wallet collected amount");
 
         //await tokensale.updateExchangeRate(env.crowdsale.ETHUSD, {from: env.crowdsale.accounts.escrow, gasLimit: env.network.gasAmount});
-    });    
+    });
 
     it("Check discount tiers flow", async() => {
         const token = await VLBToken.new(
@@ -305,7 +305,7 @@ contract('VLBCrowdsale', function (accounts) {
         buyerBalance = await token.balanceOf.call(env.tests.accounts.frequentBuyer, {from: env.tests.accounts.frequentBuyer, gas: env.network.gasAmount});
         assert.equal(form18DecimalsTo1(buyerBalance), 117000, "Failed to buy tier #3 tokens, wrong ballance on buyer wallet");
 
-        // -> Tier #4 (650)
+        // -> Tier #4 (676)
         await quantumLeap(7);
 
         await tokensale.buyTokens(
@@ -316,14 +316,14 @@ contract('VLBCrowdsale', function (accounts) {
             env.crowdsale.accounts.crowdsaleTokenWallet, 
             {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
 
-        assert.equal(form18DecimalsTo1(crowdsaleBalance), 174850500, "Failed to sell tier #4 tokens, wrong balance on crowdsale wallet");
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 174849200, "Failed to sell tier #4 tokens, wrong balance on crowdsale wallet");
 
         buyerBalance = await token.balanceOf.call(
             env.tests.accounts.frequentBuyer, 
             {from: env.tests.accounts.frequentBuyer, gas: env.network.gasAmount});
-        assert.equal(form18DecimalsTo1(buyerBalance), 149500, "Failed to buy tier #4 tokens, wrong ballance on buyer wallet");
+        assert.equal(form18DecimalsTo1(buyerBalance), 150800, "Failed to buy tier #4 tokens, wrong ballance on buyer wallet");
 
-        // -> Tier #4 (500)
+        // -> Tier #4 (650)
         await quantumLeap(7);
         
         await tokensale.buyTokens(
@@ -334,13 +334,13 @@ contract('VLBCrowdsale', function (accounts) {
             env.crowdsale.accounts.crowdsaleTokenWallet, 
             {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
 
-        assert.equal(form18DecimalsTo1(crowdsaleBalance), 174825500, "Failed to sell tier #5 tokens, wrong balance on crowdsale wallet");
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 174816700, "Failed to sell tier #5 tokens, wrong balance on crowdsale wallet");
 
         buyerBalance = await token.balanceOf.call(
             env.tests.accounts.frequentBuyer, 
             {from: env.tests.accounts.frequentBuyer, gas: env.network.gasAmount});
 
-        assert.equal(form18DecimalsTo1(buyerBalance), 174500, "Failed to buy tier #5 tokens, wrong ballance on buyer wallet");
+        assert.equal(form18DecimalsTo1(buyerBalance), 183300, "Failed to buy tier #5 tokens, wrong ballance on buyer wallet");
                 
     });
 
@@ -367,12 +367,12 @@ contract('VLBCrowdsale', function (accounts) {
             env.tests.accounts.gamechangerBuyerAddress, 
             {from: env.tests.accounts.gamechangerBuyerAddress, gas: env.network.gasAmount});
 
-        assert.equal(form18DecimalsTo1(buyerBalance), 2500000, "Failed to buy tokens, wrong balance on buyer account");
+        assert.equal(form18DecimalsTo1(buyerBalance), 3250000, "Failed to buy tokens, wrong balance on buyer account");
     
         var crowdsaleBalance = await token.balanceOf.call(
             env.crowdsale.accounts.crowdsaleTokenWallet, 
             {from: env.crowdsale.accounts.crowdsaleTokenWallet, gas: env.network.gasAmount});
-        assert.equal(form18DecimalsTo1(crowdsaleBalance), 172500000, "Failed to sell tokens, wrong balance on tokens wallet");
+        assert.equal(form18DecimalsTo1(crowdsaleBalance), 171750000, "Failed to sell tokens, wrong balance on tokens wallet");
 
         await quantumLeap(7);
         
